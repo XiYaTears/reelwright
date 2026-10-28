@@ -3,7 +3,7 @@
 | 项 | 内容 |
 | --- | --- |
 | 日期 | 2026-10-28 |
-| 状态 | 第二轮实现后初评（待需求方复核） |
+| 状态 | 已定稿（需求方复核通过） |
 | 运行环境 | Windows，Python 3.13.5，项目内 `.venv`，`PYTHONUTF8=1` |
 | 证据目录 | `examples/`（每组含 input/command/output/trace/README） |
 
