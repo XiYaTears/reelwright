@@ -54,6 +54,7 @@ class RunState(TypedDict, total=False):
     final_checks: dict[str, Any] | None
     tool_errors: Annotated[list[dict[str, Any]], operator.add]
     skipped_tool_calls: list[dict[str, Any]] | None
+    last_observations: list[dict[str, Any]] | None
 
 
 def initial_state() -> RunState:
@@ -76,4 +77,5 @@ def initial_state() -> RunState:
         final_checks=None,
         tool_errors=[],
         skipped_tool_calls=None,
+        last_observations=None,
     )
