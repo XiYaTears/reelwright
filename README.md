@@ -80,7 +80,7 @@ $env:PYTHONUTF8=1
 - 缺关键信息：`examples/02_missing_input/`
 - 检索无结果：`examples/03_no_result/`（a 持续无结果 / b 改写命中）
 - 工具失败：`examples/04_tool_failure/`（a 可恢复 / b 持续失败）
-- 超时长修正：`examples/05_over_duration/`（离线核心 38→28；真实 36→30 加分证据）
+- 超时长修正：`examples/05_over_duration/`（离线核心 38→28；真实 31s，首稿即 `within`、压缩分支未触发，加分证据）
 - 无法满足：`examples/06_unsatisfiable/`、步数上限 `examples/07_step_limit/`
 - 受控对照：`examples/08_controlled_target/`（只改目标 30/60）、
   `examples/09_controlled_retrieval/`（只改检索结果，含离线与真实对照）
@@ -110,3 +110,8 @@ docs/                需求、设计、评估、AI 使用、复盘
 - 事实检查做"素材/事实存在 + 原文逐字 + 数字/资质类表述需引用支撑"的自动校验；语义级误用
   （有引用但张冠李戴）依赖人工评审。
 - 真实模型输出非确定；离线 mock 仅验证流程。详见 `docs/03-evaluation.md` 与 `docs/05-retrospective.md`。
+
+## 实际投入
+
+- 2026-10-28 20:55 开始（环境与方案准备），23:25 收尾；实际投入约 2.5 小时，其中选题后的主体开发约 1.5 小时。
+- 未完成项：AC-08a 真实模型对照（非必需加分项）、真实模型多轮稳定性抽测；见 `docs/05-retrospective.md` §4。

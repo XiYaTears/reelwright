@@ -28,7 +28,7 @@ AI 产出：`src/` 全部代码、`tests/` 全部测试、`data/` 合成数据�
 
 我自己重跑过的验证（不是看 AI 报告）：
 
-- `pytest -q` → 198 passed, 3 deselected；`pytest -q -m real` → 3 passed。
+- `pytest -q` → 215 passed, 3 deselected；`pytest -q -m real` → 3 passed。
 - 临时 worktree 干净 checkout 到 HEAD 再跑全量测试，确认提交能独立跑绿（之前确实有一个提交不自洽）。
 - 写脚本核对 `examples/` 19 对 output/trace：run_id、mode、status、首尾事件全部一致。
 - 按 `examples/*/command.*.txt` 复跑场景；真实模型单独复跑 AC-01、AC-04a（注入超时）、AC-08b no_hit，状态与证据一致。
