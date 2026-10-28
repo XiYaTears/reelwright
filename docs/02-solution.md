@@ -364,7 +364,7 @@ def route_after_tools(state) -> Literal["agent", "finalize"]:
 | 场景 | 动作序列 | 步数 |
 | --- | --- | --- |
 | 正常 | search×2（首查未命中→改写命中）→ submit → estimate+check → submit′ → estimate+check → finish | 7 |
-| 无结果 | search → search（改写）→ ask_user | 3 |
+| 无结果 | search×5（topic → 2-gram×3 → 回退词）→ ask_user | 6 |
 | 可恢复工具失败 | search(失败) → search(重试) → search(改写) → submit → estimate+check → finish | 6 |
 | 超时长修正 | search×2 → submit(38s) → estimate+check(超) → submit′(28s) → estimate+check(通过) → finish | 7 |
 | 无法满足（时长冲突） | search×2 → submit(38s) → estimate+check(超时长+平台违规) → finish(cannot_satisfy) | 5 |
@@ -706,9 +706,9 @@ within          = window_min ≤ total_s ≤ window_max
 
 1. **检索（确定性序列，与数据无关地写死）**：
    - 第 1 次查询 = `topic` 原文；
-   - 第 2 次 = 去掉固定停用词（`怎么/如何/攻略/教程/技巧/新手/入门/方法/我的`）后，按字符顺序取第一个最长 2-gram（不足 2 字则跳过）；若与上次相同则直接进入第 3 次；
-   - 第 3 次 = 固定回退词 `星河旅拍指南`（测试锁死其在默认数据与空素材夹具上均 0 命中）；
-   - 任一次命中即进入写稿；三次均 0 结果 → `ask_user`。保证 AC-03a / AC-08b no_hit 稳定得到 ≥2 个不同查询且全部 0 结果。期望查询词序列写入 `examples` 对应 README（AC-03a：`火星旅拍攻略 → 火星 → 星河旅拍指南`；no_hit 同主题空数据集：`字幕功能上线 → 字幕 → 星河旅拍指南`）。
+   - 第 2–4 次 = 去掉固定停用词（`怎么/如何/攻略/教程/技巧/新手/入门/方法/我的`）后，按字符顺序取前 3 个不重复 2-gram（不足 2 字或与已发查询相同则跳过）；
+   - 第 5 次 = 固定回退词 `星河旅拍指南`（测试锁死其在默认数据与空素材夹具上均 0 命中）；
+   - 任一次命中即进入写稿；全部 0 结果 → `ask_user`。保证 AC-03a / AC-08b no_hit 稳定得到 ≥2 个不同查询且全部 0 结果。期望查询词序列写入 `examples` 对应 README（AC-03a：`火星旅拍攻略 → 火星 → 星旅 → 旅拍 → 星河旅拍指南`；no_hit 同主题空数据集：`字幕功能上线 → 字幕 → 幕功 → 功能 → 星河旅拍指南`）。
    - 工具错误 → 重试一次；持续失败 → `finish(cannot_satisfy)`。
 2. **初稿固定 38 秒 / 6 镜（与目标时长无关）**：命中素材时按事实原文写引用（如 P01-F1"支持字幕"）。这让受控对照共享同一初稿。
 3. **按估算结果改稿**：`too_long` → 压缩到 28 秒（5 镜）；`too_short` → 扩张到 58 秒（9 镜）；`within` → 进入规则处理。同一初稿在 30 秒目标下压缩、在 60 秒目标下扩张，动作方向随目标改变（AC-08a 确定性证据）。
@@ -810,7 +810,8 @@ $env:PYTHONUTF8=1
 | 单元 | `tests/test_duration.py` | 公式逐镜/总时长；30 秒窗口 27–33；38→28 演算；空字幕/纯字幕/超长文本；下限 5 秒与上限 300 秒；整数运算无浮点误差；`duration_s` 与文本复算一致 |
 | 单元 | `tests/test_materials.py` | "字幕"命中 P01；多 token 权重与排序稳定；top_k 截断；无结果返回空且 `ok=true`；空查询/超长查询参数错误 |
 | 单元 | `tests/test_rules.py` | 品牌禁用词命中 title/narration/caption；平台禁用词按平台生效；平台时长上限（规则 ID 来自 `max_duration_rule_id`）；夸大正则；引用素材/事实不存在；quote 非原文子串；"80%"无引用命中 CITE-001；有原文引用的数字通过；空镜 warning 不阻塞；`ok` 只由 error 决定；去重/排序/截断 |
-| 单元 | `tests/test_llm_mock.py` | 检索查询序列确定性：原文 → 去停用词 2-gram → 固定回退词；三步全 0 → `ask_user`；回退词在默认数据与空素材夹具上 0 命中；每一步 `content` 带 ≤40 字 `decision_note`；工具错误重试一次后 `finish(cannot_satisfy)` |
+| 单元 | `tests/test_mock.py` | 检索查询序列确定性：原文 → 去停用词 2-gram×3 → 固定回退词；全部 0 结果 → `ask_user`（含空素材夹具）；回退词在默认数据与空素材夹具上 0 命中；30s → 38→28、60s → 38→58；平台时长冲突 → `cannot_satisfy`；检索工具错误重试一次、持续失败 `cannot_satisfy`；每一步 `content` 非空且 ≤40 字 |
+| 单元 | `tests/test_deepseek.py` | base_url normalize（带/不带 /v1）；URL 与鉴权头；多个 tool_calls 解析；`reasoning_content` 不进入返回结构；arguments 非法 JSON → `arguments_error`；finish_reason=length → 截断错误；5xx/网络错误重试；4xx 不重试且错误消息不含密钥 |
 | 集成 | `tests/test_finalize_guard.py` | **独立证明（Q2）**：草稿旁白含"效率提升 80%"且无引用 → 规则检查命中 `CITE-001` error；模型已 `finish` 时 finalize 仍判 `failed`，绝不 `completed`；同一文本配无关引用（P01 原文不含 80%）仍 error；构造含"效率提升 80%"原文的测试数据集并正确引用时可通过（证明不是一刀切禁词） |
 | 单元 | `tests/test_dataset.py` | 三个 JSON 加载与 schema 校验；重复 ID 报错；正则编译失败报错；**空素材数组合法**（AC-08b 夹具）；默认数据约束由独立测试锁死（P01 恰好一条事实、素材无效果数据）；平台 `max_duration_rule_id` 必填且格式/唯一性校验；固定回退词 `星河旅拍指南` 在默认数据上 0 命中；digest 稳定与内容变更 |
 | 单元 | `tests/test_registry.py` | 注入第 1 次失败、后续成功；无条件注入每次失败；参数非法返回 `invalid_arguments`；未知工具错误；调用计数准确；控制动作不可注入 |
@@ -879,7 +880,7 @@ examples/
 | AC-08b no_hit | `examples/09_controlled_retrieval/no_hit/real/` | 检索连续 0 结果 | 与 `hit/real` 对照：查询词、`total_matched`、工具调用序列/状态不同；判定同 01 §7.2 |
 | AC-04a | `examples/04_tool_failure/a_recoverable/real/` | 注入 `search_materials=timeout@1` 必失败 | 观察到"失败 → 重试/调整"，`tool_errors` 含注入记录，最终不把失败当成功；与无注入 trace 对照动作不同 |
 
-- 三条证据的判定以 trace 中可观察的 `tool_calls`、查询词/参数、`total_matched`、`tool_errors`、最终状态为准，不做文案比对。期望查询序列（写入对应 README 并锁定）：AC-03a `火星旅拍攻略 → 火星 → 星河旅拍指南`；AC-08b no_hit `字幕功能上线 → 字幕 → 星河旅拍指南`；三步均 0 命中后 `ask_user`。
+- 三条证据的判定以 trace 中可观察的 `tool_calls`、查询词/参数、`total_matched`、`tool_errors`、最终状态为准，不做文案比对。期望查询序列（写入对应 README 并锁定）：AC-03a `火星旅拍攻略 → 火星 → 星旅 → 旅拍 → 星河旅拍指南`；AC-08b no_hit `字幕功能上线 → 字幕 → 幕功 → 功能 → 星河旅拍指南`；全部 0 命中后 `ask_user`。
 - 正式证据必须真实运行；离线固定策略的同场景 trace 可作对照，但不能替代真实 trace。
 - 真实结果与预期分支不符时保留原样并在 README 说明，禁止补写或重造。
 
