@@ -22,7 +22,8 @@
 
 ```
 CLI (argparse / --input JSON)
- └─ runner：输入校验 → 创建 TraceWriter → StateGraph.invoke(initial_state)
+ └─ runner：创建 TraceWriter → 输入校验（needs_input 也必须有 run_start/input_validation/run_end）
+      → StateGraph.invoke(initial_state)
       ├─ agent 节点 ──> LLMClient（DeepSeek 真实 / Mock 离线）
       │      └─ 返回 content + tool_calls（全部保留，逐条执行）→ trace
       ├─ tools 节点 ──> ToolRegistry（参数校验 + 失败注入 + 顺序执行）
@@ -100,7 +101,7 @@ docs/
 
 ### 3.3 运行期对象装配
 
-- `runner` 读取 `Requirements`，构造 `Dataset`（含 `data_digest`）、`TraceWriter`、`LLMClient`。
+- `runner` 读取 `Requirements`；**先创建 `TraceWriter`，再做输入校验**（`needs_input` 场景也要留下 `run_start` / `input_validation` / `run_end`），随后构造 `Dataset`（含 `data_digest`）与 `LLMClient`。
 - 三个业务工具以"闭包绑定运行上下文"的方式注册：`search_materials(dataset)`、`estimate_duration(target_duration_s)`、`check_rules(dataset, platform)`。**目标时长与平台来自输入，不由模型传参**，模型无法通过工具参数篡改判定基准。
 - `agent`/`tools`/`finalize` 节点由 `nodes.py` 工厂接收 `(llm, registry, dataset, requirements, trace, budgets)` 后闭包生成；`RunState` 只放决策相关数据，trace/配置不进 state。
 
@@ -180,15 +181,15 @@ python -m src.cli run --topic "字幕功能上线" --audience "剪辑新手" --p
 {
   "version": "platform-rules-v1",
   "platforms": {
-    "douyin":      { "display_name": "抖音",   "max_total_duration_s": 180, "banned_terms": [] },
-    "kuaishou":    { "display_name": "快手",   "max_total_duration_s": 25,  "banned_terms": [] },
-    "xiaohongshu": { "display_name": "小红书", "max_total_duration_s": 60,  "banned_terms": [] },
-    "shipinhao":   { "display_name": "视频号", "max_total_duration_s": 120, "banned_terms": [] }
+    "douyin":      { "display_name": "抖音",   "max_total_duration_s": 180, "max_duration_rule_id": "PLAT-douyin-DUR-001",      "banned_terms": [] },
+    "kuaishou":    { "display_name": "快手",   "max_total_duration_s": 25,  "max_duration_rule_id": "PLAT-kuaishou-DUR-001",    "banned_terms": [] },
+    "xiaohongshu": { "display_name": "小红书", "max_total_duration_s": 60,  "max_duration_rule_id": "PLAT-xiaohongshu-DUR-001", "banned_terms": [] },
+    "shipinhao":   { "display_name": "视频号", "max_total_duration_s": 120, "max_duration_rule_id": "PLAT-shipinhao-DUR-001",   "banned_terms": [] }
   }
 }
 ```
 
-约束：规则 ID 全局唯一且符合前缀约定（`BRAND-`/`PLAT-<platform>-`/`EXAG-`/`CITE-`/`STRUCT-`）；正则必须可编译；平台枚举固定四个，未知平台由输入校验拦截为 `needs_input`。所有规则注明为合成近似规范，非法务级依据。**合成说明**：`kuaishou.max_total_duration_s=25` 是内部试用渠道规范（合成），专门用于构造 AC-06"目标区间 [27,33] 与上限 25 互斥"的明确失败场景，不代表真实平台规则；其余平台上限同样为合成值。
+约束：规则 ID 全局唯一且符合前缀约定（`BRAND-`/`PLAT-<platform>-`/`EXAG-`/`CITE-`/`STRUCT-`）；平台时长上限必须有独立 `max_duration_rule_id`（格式 `PLAT-<platform>-DUR-###`），`check_rules` 命中时使用该 ID；正则必须可编译；平台枚举固定四个，未知平台由输入校验拦截为 `needs_input`。**素材数组允许为空**（用于 AC-08b 空素材夹具），空素材是合法数据集，不是加载错误。所有规则注明为合成近似规范，非法务级依据。**合成说明**：`kuaishou.max_total_duration_s=25` 是内部试用渠道规范（合成），专门用于构造 AC-06"目标区间 [27,33] 与上限 25 互斥"的明确失败场景，不代表真实平台规则；其余平台上限同样为合成值。
 
 ### 4.3 脚本模型
 
@@ -326,10 +327,12 @@ def route_after_agent(state) -> Literal["tools", "finalize"]:
 def route_after_tools(state) -> Literal["agent", "finalize"]:
     if state["terminal"] in ("finish", "ask_user", "invalid"):
         return "finalize"
-    if state["step"] >= MAX_STEPS or state["tool_calls_used"] > MAX_TOOL_CALLS:
+    if state["step"] >= MAX_STEPS or state["tool_calls_used"] >= MAX_TOOL_CALLS:
         return "finalize"
     return "agent"
 ```
+
+> `tools` 节点在**执行前**预检 `tool_calls_used + len(本批) > MAX_TOOL_CALLS`：超限时本批不执行，trace 记录 `skipped_tool_calls`（调用名/id），直接 finalize 为 `incomplete`；不出现"先超发再截断"。
 
 ### 5.2 一个模型步的语义
 
@@ -350,7 +353,7 @@ def route_after_tools(state) -> Literal["agent", "finalize"]:
 | 项 | 默认 | 强制方式 | 触顶结果 |
 | --- | --- | --- | --- |
 | 模型步数 | 8（CLI 可调 1–20） | `agent` 节点前路由判断；第 8 步的工具批执行完后不再回 agent | **末步含 `finish` 且 finalize 复算通过 → `completed`**；末步 `finish` 但复算不过 → `failed`；**未 finish 即触顶 → `incomplete`**，`failure.code=step_limit` |
-| 工具调用数 | `2 × 步数上限`（默认 16） | 每批结束后累加，超过即收尾（批内不截断，保证每个 tool_call 都有回填） | 同上：已 `finish` 则按复算判定，否则 `incomplete`，`failure.code=tool_call_limit` |
+| 工具调用数 | `2 × 步数上限`（默认 16） | **批执行前预检**：`used + len(批) > max` ⇒ 本批不执行，trace 记 `skipped_tool_calls` 后收尾；批后 `used >= max` 即回 finalize（不进入下一轮 agent） | 已 `finish` 则按复算判定，否则 `incomplete`，`failure.code=tool_call_limit` |
 | 单批 tool_calls | 不额外限制（受模型行为约束） | —— | —— |
 | LangGraph 递归 | `2 × 步数上限 + 5` | `compiled.invoke(..., config={"recursion_limit": ...})` 作最后保险 | 捕获 `GraphRecursionError` → `failed`，`failure.code=orchestration_error` |
 
@@ -511,7 +514,7 @@ def route_after_tools(state) -> Literal["agent", "finalize"]:
 | --- | --- | --- | --- |
 | brand | 品牌禁用词（`banned_terms`，如"最强""第一""绝对""永久""100%""全网最低"） | title / narration / caption | error |
 | platform | 平台禁用词（如站外导流"微信""二维码"等，按平台配置） | title / narration / caption | error |
-| platform | 平台总时长上限（`max_total_duration_s`） | 整稿 | error |
+| platform | 平台总时长上限（`max_total_duration_s`，规则 ID 取数据文件 `max_duration_rule_id`，如 `PLAT-kuaishou-DUR-001`） | 整稿 | error |
 | exaggeration | 夸大表述正则（保证效果、绝对化承诺等） | title / narration / caption | error |
 | citation | 引用存在性：素材 ID、事实 ID 必须存在 | 各镜 citations | error |
 | citation | 原文一致性：`quote` 必须是事实原文的连续子串（去首尾空白后逐字比较） | 各镜 citations | error |
@@ -601,7 +604,7 @@ within          = window_min ≤ total_s ≤ window_max
 
 1. 结构检查：分镜非空、字段类型/长度（注册表已挡一层，finalize 复算时再校验）；空镜 warning。
 2. 文本扫描：对 title/各镜 narration/caption 依次跑品牌禁用词、平台禁用词、夸大正则；命中生成 `RuleViolation`。
-3. 平台时长：整稿总时长与平台 `max_total_duration_s` 比较。
+3. 平台时长：复用 `tools/duration.py` 的纯函数算整稿总时长，与平台 `max_total_duration_s` 比较；命中时使用数据文件中的 `max_duration_rule_id`（如 `PLAT-kuaishou-DUR-001`），不靠代码拼规则 ID。
 4. 引用校验：对每镜 citations 做"素材存在 → 事实存在 → quote 逐字子串"三段检查。
 5. 事实支撑：从 narration/caption 提取 `claim_patterns` 命中文本，检查是否出现在该镜引用事实原文集合中；标题中的命中检查全稿引用集合。
 6. 聚合去重、排序、截断，计算 `ok/stats`。
@@ -701,7 +704,12 @@ within          = window_min ≤ total_s ≤ window_max
 
 **离线 mock 的边界（必须写进 README 与评估文档）**：mock 是"读取真实工具返回结果后按固定规则作决策"的策略实现，用于验证流程分支与受控对照；它不会生成真实模型质量的文案，不能作为模型能力证据。mock 可读取合成数据集来构造引用与查询词（仅为离线链路演示，真实模型只能通过工具看到数据）。固定策略：
 
-1. **检索**：首查用 `topic` 原文；无结果 → 用"数据集中与 topic 有交集的词"改写一次；仍无结果 → `ask_user`。工具错误 → 重试一次；持续失败 → `finish(cannot_satisfy)`。
+1. **检索（确定性序列，与数据无关地写死）**：
+   - 第 1 次查询 = `topic` 原文；
+   - 第 2 次 = 去掉固定停用词（`怎么/如何/攻略/教程/技巧/新手/入门/方法/我的`）后，按字符顺序取第一个最长 2-gram（不足 2 字则跳过）；若与上次相同则直接进入第 3 次；
+   - 第 3 次 = 固定回退词 `星河旅拍指南`（测试锁死其在默认数据与空素材夹具上均 0 命中）；
+   - 任一次命中即进入写稿；三次均 0 结果 → `ask_user`。保证 AC-03a / AC-08b no_hit 稳定得到 ≥2 个不同查询且全部 0 结果。期望查询词序列写入 `examples` 对应 README（AC-03a：`火星旅拍攻略 → 火星 → 星河旅拍指南`；no_hit 同主题空数据集：`字幕功能上线 → 字幕 → 星河旅拍指南`）。
+   - 工具错误 → 重试一次；持续失败 → `finish(cannot_satisfy)`。
 2. **初稿固定 38 秒 / 6 镜（与目标时长无关）**：命中素材时按事实原文写引用（如 P01-F1"支持字幕"）。这让受控对照共享同一初稿。
 3. **按估算结果改稿**：`too_long` → 压缩到 28 秒（5 镜）；`too_short` → 扩张到 58 秒（9 镜）；`within` → 进入规则处理。同一初稿在 30 秒目标下压缩、在 60 秒目标下扩张，动作方向随目标改变（AC-08a 确定性证据）。
 4. **规则处理**：error 可改则改后重查；无法改（如目标区间下限大于平台时长上限）→ `finish(cannot_satisfy)`。
@@ -793,7 +801,7 @@ $env:PYTHONUTF8=1
 .venv\Scripts\python -m pytest -q -m real  # 真实模型冒烟（需 .env.local，默认跳过）
 ```
 
-项目根 `pytest.ini`：注册 marker `real`，设置 `addopts = -m "not real"`，默认一条命令即排除真实测试；需要真实冒烟时用 `-m real` 覆盖启用（不靠口头约定）。
+项目根 `pytest.ini`：注册 marker `real`（真实模型）与 `evidence`（证据一致性）；默认 `addopts = -m "not real and not evidence"`，第二轮证据目录未就绪时跳过 evidence；**第三轮证据齐备后默认执行 evidence 测试**（从 addopts 移除 `not evidence`），需要真实冒烟时用 `-m real` 覆盖启用。
 
 ### 15.2 分层与用例矩阵
 
@@ -801,20 +809,21 @@ $env:PYTHONUTF8=1
 | --- | --- | --- |
 | 单元 | `tests/test_duration.py` | 公式逐镜/总时长；30 秒窗口 27–33；38→28 演算；空字幕/纯字幕/超长文本；下限 5 秒与上限 300 秒；整数运算无浮点误差；`duration_s` 与文本复算一致 |
 | 单元 | `tests/test_materials.py` | "字幕"命中 P01；多 token 权重与排序稳定；top_k 截断；无结果返回空且 `ok=true`；空查询/超长查询参数错误 |
-| 单元 | `tests/test_rules.py` | 品牌禁用词命中 title/narration/caption；平台禁用词按平台生效；平台时长上限；夸大正则；引用素材/事实不存在；quote 非原文子串；"80%"无引用命中 CITE-001；有原文引用的数字通过；空镜 warning 不阻塞；`ok` 只由 error 决定；去重/排序/截断 |
+| 单元 | `tests/test_rules.py` | 品牌禁用词命中 title/narration/caption；平台禁用词按平台生效；平台时长上限（规则 ID 来自 `max_duration_rule_id`）；夸大正则；引用素材/事实不存在；quote 非原文子串；"80%"无引用命中 CITE-001；有原文引用的数字通过；空镜 warning 不阻塞；`ok` 只由 error 决定；去重/排序/截断 |
+| 单元 | `tests/test_llm_mock.py` | 检索查询序列确定性：原文 → 去停用词 2-gram → 固定回退词；三步全 0 → `ask_user`；回退词在默认数据与空素材夹具上 0 命中；每一步 `content` 带 ≤40 字 `decision_note`；工具错误重试一次后 `finish(cannot_satisfy)` |
 | 集成 | `tests/test_finalize_guard.py` | **独立证明（Q2）**：草稿旁白含"效率提升 80%"且无引用 → 规则检查命中 `CITE-001` error；模型已 `finish` 时 finalize 仍判 `failed`，绝不 `completed`；同一文本配无关引用（P01 原文不含 80%）仍 error；构造含"效率提升 80%"原文的测试数据集并正确引用时可通过（证明不是一刀切禁词） |
-| 单元 | `tests/test_dataset.py` | 三个 JSON 加载与 schema 校验；重复 ID 报错；正则编译失败报错；P01 只有一条事实；digest 稳定 |
+| 单元 | `tests/test_dataset.py` | 三个 JSON 加载与 schema 校验；重复 ID 报错；正则编译失败报错；**空素材数组合法**（AC-08b 夹具）；默认数据约束由独立测试锁死（P01 恰好一条事实、素材无效果数据）；平台 `max_duration_rule_id` 必填且格式/唯一性校验；固定回退词 `星河旅拍指南` 在默认数据上 0 命中；digest 稳定与内容变更 |
 | 单元 | `tests/test_registry.py` | 注入第 1 次失败、后续成功；无条件注入每次失败；参数非法返回 `invalid_arguments`；未知工具错误；调用计数准确；控制动作不可注入 |
-| 集成 | `tests/test_graph_offline.py` | 正常 → `completed` 且 trace 顺序正确；**AC-05 核心数值**：首稿 38 秒（`>30`、`too_long`）→ 改稿 → 最终 28 秒（`≤30` 且 `within`）；**受控目标对照**：同数据下 target=30 → 38→28（压缩）、target=60 → 38→58（扩张），两条 trace 的 verdict/动作方向不同；**受控检索对照**：默认数据 → 命中→`completed` 且引用 P01，`--data-dir` 空素材变体 → ≥2 次 0 结果→`ask_user`→`needs_input`；可恢复失败 → `completed` 且 `tool_errors` 有注入记录；持续失败 → `failed`；**步数上限边界**：最后一个允许步 `finish` 且复算通过 → `completed`，同预算未 `finish` → `incomplete`；`--max-steps 3` → `incomplete`；一批多个 tool_calls 逐条回填（tool 消息数==调用数）；finish 与 ask_user 同批 → `failed`；无 tool_calls 提前终止且校验不过 → `failed`；每条 `model_response` 的 `decision_note` 非空且 trace 无 `reasoning_content` |
+| 集成 | `tests/test_graph_offline.py` | 正常 → `completed` 且 trace 顺序正确；**AC-05 核心数值**：首稿 38 秒（`>30`、`too_long`）→ 改稿 → 最终 28 秒（`≤30` 且 `within`）；**受控目标对照**：同数据下 target=30 → 38→28（压缩）、target=60 → 38→58（扩张），两条 trace 的 verdict/动作方向不同；**受控检索对照**：默认数据 → 命中→`completed` 且引用 P01，`--data-dir` 空素材变体 → ≥2 次 0 结果→`ask_user`→`needs_input`；可恢复失败 → `completed` 且 `tool_errors` 有注入记录；持续失败 → `failed`；**步数上限边界**：最后一个允许步 `finish` 且复算通过 → `completed`，同预算未 `finish` → `incomplete`；**工具调用预算 16/17 边界**：已用 16 时下一批预检失败 → 不执行、trace 有 `skipped_tool_calls`、`incomplete(tool_call_limit)`；15+2 同样整批跳过；`--max-steps 3` → `incomplete`；一批多个 tool_calls 逐条回填（tool 消息数==调用数）；finish 与 ask_user 同批 → `failed`；无 tool_calls 提前终止且校验不过 → `failed`；每条 `model_response` 的 `decision_note` 非空且 trace 无 `reasoning_content` |
 | 集成 | `tests/test_output.py` | 输出字段齐全；引用三元组全部可回溯；逐镜时长与总时长三方一致；`completed` 蕴含 `within && rules.ok`；`failed` 必有 `failure`；trace 无 `reasoning_content`、无密钥值；`data_digest`/`budget`/`trace_path` 正确 |
-| 集成 | `tests/test_examples_evidence.py` | 遍历 `examples/`：用例目录包含 input/command/output/trace/README；`output.<mode>.json` 与 `trace.<mode>.jsonl` 的 run_id、status、mode 一致；trace 为合法 JSONL 且首尾事件为 `run_start`/`run_end`；目录 README 声明 mode 与复跑命令；证据缺失时 skip 并提示（第三轮启用） |
+| 集成 | `tests/test_examples_evidence.py` | marker `evidence`；**第三轮证据齐备后默认执行**；遍历 `examples/`：用例目录必须含 input/command/output/trace/README，`output.<mode>.json` 与 `trace.<mode>.jsonl` 的 run_id/status/mode 一致，trace 为合法 JSONL 且首尾为 `run_start`/`run_end`；**缺失文件、mode/run_id/status 不一致、或 examples 无任何证据目录 → fail，不允许 skip/空跑**；真实性由需求方按 `docs/03` 复跑比对，测试不假装能验证 |
 | 端到端 | `tests/test_cli.py` | 子进程跑 `python -m src.cli run` 各离线场景（AC-01–AC-08）；stdout 是合法 JSON；退出码 0/3/4/5 对应状态；缺失 `audience` → 3；输入 JSON 与 CLI 参数合并/覆盖；`--offline` 无密钥可跑；未知平台 → 3；非法注入 → 2；`--data-dir` 对照实验可复跑；AC-05/AC-08 命令可在 `examples/` 目录按 `command.*.txt` 原样复跑 |
 | 真实 | `tests/test_real_smoke.py -m real` | 正式真实决策证据跑 AC-03a / AC-08b no_hit / AC-04a（刺激必然发生，分别断言连续 0 结果有可见反应且无编造、与 hit 组动作不同、注入失败后重试/调整）；AC-05 real、AC-08a real 作为加分证据另跑并如实记录；断言硬约束（区间、引用可回溯、规则 error 0）；无密钥自动 skip |
 
 ### 15.3 测试原则
 
 - 断言**行为与数据**（状态、时长数值、引用映射、违规 ID、trace 事件结构），不断言日志文本；trace 断言用事件类型/字段，不做整行字符串比对。
-- 离线测试完全不碰网络与 `.env.local`；真实测试用 marker 隔离，默认 `-m "not real"`（pytest 配置里排除）。
+- 离线测试完全不碰网络与 `.env.local`；真实测试 marker `real`、证据测试 marker `evidence`，第二轮 `pytest.ini` 默认 `-m "not real and not evidence"`；第三轮证据齐备后去掉 `not evidence`，让证据结构测试默认执行。
 - 固定数据、固定 mock、固定注入序号 ⇒ 结果确定；涉及时间的字段（`ts`/`run_id`/`generated_at`）不参与相等断言，只校验格式。
 - 每个模块提交前跑对应测试；全部模块完成后跑全量 + 真实冒烟，证据存 `examples/`。
 
@@ -832,7 +841,7 @@ examples/
   06_unsatisfiable/       kuaishou 上限 25 vs 目标 30 → failed
   07_step_limit/          --max-steps 3 → incomplete
   08_controlled_target/   target_30/、target_60/、README.md（同主题，仅目标时长不同）
-  09_controlled_retrieval/ hit/、no_hit/、no_hit_data/（素材为空、规则同套）、README.md（同主题，仅检索结果不同）
+  09_controlled_retrieval/ hit/、no_hit/、no_hit_data/（三个 JSON 齐全：素材数组为空、品牌/平台规则同默认数据）、README.md（同主题，仅检索结果不同）
   pytest-offline.txt      # 全量离线测试输出（实际命令重定向，docs/03 引用）
   pytest-real.txt         # 真实模型冒烟测试输出（实际命令重定向，docs/03 引用）
 ```
@@ -858,7 +867,7 @@ examples/
 3. 真实证据必须来自真实 DeepSeek 调用：`run_start.model` 有值、`mode=real`；不得把 mock 结果改名冒充真实运行。
 4. 同一组的 `output` 与 `trace` 必须属于同一次运行（`run_id`、`status`、预算一致）；不允许跨运行拼接。
 5. 用例实际结果与预期分支不符时，保留真实结果并在 README 说明，**不得为满足验收条件重写证据**；由需求方评审决定是否需要重新运行。
-6. `tests/test_examples_evidence.py` 自动核对结构一致性（存在性、mode/run_id/status、trace 首尾事件）；真实性依赖上述流程约束与人工抽查，测试不能替代。
+6. `tests/test_examples_evidence.py`（marker `evidence`）自动核对结构一致性（存在性、mode/run_id/status、trace 首尾事件）；**第三轮证据齐备后默认执行，缺文件/不一致/空 examples 一律 fail，不允许 skip**；真实性依赖上述流程约束、需求方按 `docs/03` 复跑比对与人工抽查，测试不假装能验证真实性。
 
 #### 15.4.5 正式真实模式"决策证据"（三条刺激必然发生的场景）
 
@@ -870,7 +879,7 @@ examples/
 | AC-08b no_hit | `examples/09_controlled_retrieval/no_hit/real/` | 检索连续 0 结果 | 与 `hit/real` 对照：查询词、`total_matched`、工具调用序列/状态不同；判定同 01 §7.2 |
 | AC-04a | `examples/04_tool_failure/a_recoverable/real/` | 注入 `search_materials=timeout@1` 必失败 | 观察到"失败 → 重试/调整"，`tool_errors` 含注入记录，最终不把失败当成功；与无注入 trace 对照动作不同 |
 
-- 三条证据的判定以 trace 中可观察的 `tool_calls`、查询词/参数、`total_matched`、`tool_errors`、最终状态为准，不做文案比对。
+- 三条证据的判定以 trace 中可观察的 `tool_calls`、查询词/参数、`total_matched`、`tool_errors`、最终状态为准，不做文案比对。期望查询序列（写入对应 README 并锁定）：AC-03a `火星旅拍攻略 → 火星 → 星河旅拍指南`；AC-08b no_hit `字幕功能上线 → 字幕 → 星河旅拍指南`；三步均 0 命中后 `ask_user`。
 - 正式证据必须真实运行；离线固定策略的同场景 trace 可作对照，但不能替代真实 trace。
 - 真实结果与预期分支不符时保留原样并在 README 说明，禁止补写或重造。
 

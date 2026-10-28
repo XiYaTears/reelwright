@@ -131,7 +131,7 @@
 | FR-5 | 规则检查 | 品牌禁用词、平台规范、夸大表述真实检查；违规项含规则 ID、位置、命中文本、修改建议；有 error 不得判成功 |
 | FR-6 | 引用校验 | 引用必须指向真实素材/事实，`quote` 必须与素材原文逐字匹配；数字/百分比/资质类表述必须有引用支撑 |
 | FR-7 | 动态决策 | 检索无结果时由模型决定改写查询或请求补充；时长/规则不过时改稿重查；工具失败时调整动作或明确失败；不得静默编造 |
-| FR-8 | 状态与预算 | 四状态明确；步数上限默认 8、工具调用上限由编排层强制；触顶返回 `incomplete` 并保留未完成证据 |
+| FR-8 | 状态与预算 | 四状态明确；步数上限默认 8、工具调用上限由编排层强制（批前预检，超限批不执行并记录未执行调用）；**触顶且未 finish → `incomplete`；最后一个允许步 finish 且复算通过 → `completed`**；保留未完成证据 |
 | FR-9 | trace | 每步落盘：步骤序号、动作（工具名+参数）、观察摘要；模型每次发起工具调用前在可见 content 中给一句 ≤40 字本步意图，写入 trace `decision_note`（不是思维链）；不记录 `reasoning_content`/内部思维 |
 | FR-10 | 失败注入 | CLI 或输入 JSON 指定工具、错误类型、第几次调用失败；同一输入可复现同一失败点 |
 | FR-11 | 双模式 | 真实模式读 `.env.local` 调 DeepSeek；离线模式用固定策略 mock 跑通全流程；二者同一 LLM 接口、同一图、同一工具 |
@@ -209,20 +209,21 @@
 
 ### AC-06 无法满足（明确失败）
 
-- **输入**：`platform=kuaishou`、`target_duration_s=30`；合成规则集中该渠道内部试用规范 `max_total_duration_s=25`。目标区间 `[27, 33]` 与上限 25 互斥。
+- **输入**：`platform=kuaishou`、`target_duration_s=30`；合成规则集中该渠道内部试用规范 `max_total_duration_s=25`（规则 ID `PLAT-kuaishou-DUR-001`）。目标区间 `[27, 33]` 与上限 25 互斥。
 - **判定条件**：
   1. `status == "failed"`（不得 `completed`/`incomplete`），退出码 5；
-  2. trace 中至少一次时长估算 `too_long`，且至少一次规则检查命中平台时长违规（`PLAT-<platform>-*`），证明 Agent 尝试过；
+  2. trace 中至少一次时长估算 `too_long`，且至少一次规则检查命中 `PLAT-kuaishou-DUR-001` 平台时长违规，证明 Agent 尝试过；
   3. `failure.code` 为明确原因（`cannot_satisfy` / `constraints_conflict`），`failure.evidence` 能同时看到"目标区间下限 27"与"平台上限 25"的冲突证据；
   4. 不得输出通过校验的 `completed` 结论；`script` 如保留仅为证据稿。
 
 ### AC-07 步数上限（状态覆盖）
 
-- **输入**：正常场景 + `--max-steps 3`（或等价的低预算配置）。
+- **输入**：正常场景 + `--max-steps 3`（或等价的低预算配置），模型在预算内未能收尾。
 - **判定条件**：
   1. `status == "incomplete"`，退出码 4；
   2. `budget.steps_used == 3`（或配置值），且 trace 最后为收尾事件、写明触顶原因；
   3. 不把未通过校验的草稿判为 `completed`；输出如有 `script` 必须附带未解决的检查结论。
+- **边界口径**：若模型恰在最后一个允许步 `finish` 且 finalize 复算通过，必须判 `completed`（不得因为"触顶"判 `incomplete`）；此边界由独立测试覆盖（02 §15.2）。
 
 ### AC-08 受控对照（只改一个输入变量，动作随之改变）
 
