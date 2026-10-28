@@ -3,7 +3,9 @@
 - 原生 tool calling：解析全部 tool_calls，arguments 是 JSON 字符串；
 - `reasoning_content` 不进入返回结构，不落任何日志；
 - 超时/429/5xx 有限重试；finish_reason=length 视为截断错误，不静默接受；
-- 密钥只用于 Authorization 头，出现在错误消息里的只有状态码/异常类名。
+- 密钥只用于 Authorization 头，出现在错误消息里的只有状态码/异常类名；
+- `trust_env=False`：不读取系统代理/NO_PROXY（本机 `NO_PROXY` 含 `[::1]` 时 httpx 会因非法端口崩溃）；
+  代理只能通过显式 `proxy` 参数（来自 `LLM_PROXY`）配置。
 """
 
 from __future__ import annotations
@@ -47,6 +49,7 @@ class DeepSeekClient:
         temperature: float = DEFAULT_TEMPERATURE,
         max_retries: int = DEFAULT_MAX_RETRIES,
         transport: httpx.BaseTransport | None = None,
+        proxy: str | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         if not api_key:
@@ -60,7 +63,16 @@ class DeepSeekClient:
         self._temperature = temperature
         self._max_retries = max(0, max_retries)
         self._sleep = sleep
-        self._client = httpx.Client(timeout=timeout_s, transport=transport)
+        self._proxy = proxy.strip() if isinstance(proxy, str) and proxy.strip() else None
+        client_kwargs: dict[str, Any] = {
+            "timeout": timeout_s,
+            "transport": transport,
+            # 不读系统代理环境变量：本机 NO_PROXY 的 "[::1]" 会让 httpx 构造 URL 时崩溃。
+            "trust_env": False,
+        }
+        if self._proxy is not None:
+            client_kwargs["proxy"] = self._proxy
+        self._client = httpx.Client(**client_kwargs)
 
     def close(self) -> None:
         self._client.close()

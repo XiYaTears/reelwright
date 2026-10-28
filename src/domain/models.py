@@ -1,7 +1,7 @@
 """领域数据模型。
 
-第一阶段只包含数据集实体（素材/事实/规则）；脚本、估算与运行输出模型在后续模块加入。
-所有对象只读（frozen），由 dataset.py 统一校验与构建。
+包含数据集实体（素材/事实/规则）、脚本/引用/估算/规则结果与运行输入；全部只读（frozen），
+由 dataset.py（实体）与 domain/script.py（脚本）统一校验与构建。
 """
 
 from __future__ import annotations

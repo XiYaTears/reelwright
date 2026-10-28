@@ -213,3 +213,28 @@ def test_missing_function_name_marked() -> None:
     response = client.chat([{"role": "user", "content": "x"}], [])
     client.close()
     assert response.tool_calls[0].arguments_error is not None
+
+
+def test_broken_no_proxy_env_does_not_break_client(monkeypatch) -> None:
+    """回归：本机 NO_PROXY 含 [::1] 时，httpx 默认 trust_env 会因非法 URL 崩溃。"""
+    monkeypatch.setenv("NO_PROXY", "localhost,127.0.0.1,::1,[::1]")
+    monkeypatch.setenv("HTTP_PROXY", "http://127.0.0.1:7897")
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:7897")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_ok_payload())
+
+    client = _make_client(handler)
+    response = client.chat([{"role": "user", "content": "x"}], [])
+    client.close()
+    assert response.tool_calls[0].name == "search_materials"
+
+
+def test_explicit_proxy_option_constructs() -> None:
+    client = DeepSeekClient(
+        api_key="test-key",
+        base_url="https://api.deepseek.com",
+        model=MODEL,
+        proxy="http://127.0.0.1:7897",
+    )
+    client.close()
