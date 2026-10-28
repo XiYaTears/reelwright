@@ -1,7 +1,8 @@
 """运行入口：输入校验、模式装配、图调用、输出组装与退出码。
 
-顺序（评审要求）：创建 TraceWriter → run_start → 输入校验（needs_input 也落
-run_start/input_validation/run_end）→ 图调用 → 输出 → run_end。
+顺序：环境/配置与数据集 fail-fast → 创建 TraceWriter → run_start → 输入校验
+（needs_input 也落 run_start/input_validation/run_end）→ 图调用 → 输出 → run_end。
+配置缺失/数据集不可用属于内部错误（退出码 1）；模型调用失败（LLMError）是业务 failed（退出码 5）。
 """
 
 from __future__ import annotations
@@ -152,7 +153,12 @@ def run(
         trace.close()
         return RunResult(output, exit_code)
 
-    trace.event("input_validation", ok=True)
+    trace.event(
+        "input_validation",
+        ok=True,
+        missing_fields=[],
+        invalid_fields=[],
+    )
 
     try:
         if llm_factory is not None:
@@ -200,7 +206,20 @@ def run(
             code="llm_error",
             message=str(exc),
         )
-        trace.event("finalize", status=status, failure_code="llm_error")
+        trace.event(
+            "finalize",
+            status=status,
+            failure_code="llm_error",
+            estimate=None,
+            rules=None,
+            mismatch=None,
+            budget={
+                "steps_used": _trace_progress(trace)[0],
+                "max_steps": budgets.max_steps,
+                "tool_calls_used": _trace_progress(trace)[1],
+                "max_tool_calls": budgets.max_tool_calls,
+            },
+        )
         _write_json(out_path, output)
         exit_code = int(ExitCode.FAILED)
         steps_used, tool_calls_used = _trace_progress(trace)
@@ -227,7 +246,20 @@ def run(
             code="orchestration_error",
             message="LangGraph recursion_limit 触发，编排层兜底失败",
         )
-        trace.event("finalize", status=status, failure_code="orchestration_error")
+        trace.event(
+            "finalize",
+            status=status,
+            failure_code="orchestration_error",
+            estimate=None,
+            rules=None,
+            mismatch=None,
+            budget={
+                "steps_used": _trace_progress(trace)[0],
+                "max_steps": budgets.max_steps,
+                "tool_calls_used": _trace_progress(trace)[1],
+                "max_tool_calls": budgets.max_tool_calls,
+            },
+        )
         _write_json(out_path, output)
         exit_code = int(ExitCode.FAILED)
         steps_used, tool_calls_used = _trace_progress(trace)
@@ -242,7 +274,15 @@ def run(
         trace.close()
         return RunResult(output, exit_code)
     except Exception as exc:  # 未预期内部错误：不伪装成业务状态
-        trace.event("run_end", status="internal_error", error=f"{type(exc).__name__}: {exc}")
+        steps_used, tool_calls_used = _trace_progress(trace)
+        trace.event(
+            "run_end",
+            status="internal_error",
+            error=f"{type(exc).__name__}: {exc}",
+            steps_used=steps_used,
+            tool_calls_used=tool_calls_used,
+            exit_code=int(ExitCode.INTERNAL_ERROR),
+        )
         trace.close()
         return RunResult(None, ExitCode.INTERNAL_ERROR, f"内部错误：{type(exc).__name__}: {exc}")
 

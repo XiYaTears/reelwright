@@ -463,6 +463,7 @@ class MockClient:
             finish_reason="tool_calls",
             usage=Usage(),
             model=self.model_name,
+            response_id=f"mock-response-{self._response_seq}",
         )
 
     def _initial_draft_estimate(self, draft: dict[str, Any]) -> int:

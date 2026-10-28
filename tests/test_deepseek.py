@@ -16,6 +16,7 @@ MODEL = "deepseek-flash"
 
 def _ok_payload() -> dict[str, Any]:
     return {
+        "id": "resp-123",
         "model": MODEL,
         "choices": [
             {
@@ -102,6 +103,7 @@ def test_chat_parses_multiple_tool_calls_and_drops_reasoning() -> None:
     assert [call.id for call in response.tool_calls] == ["call_a", "call_b"]
     assert response.tool_calls[0].arguments == {"query": "字幕"}
     assert response.usage.total_tokens == 15
+    assert response.response_id == "resp-123"
     assert "内部思考，不应被记录" not in repr(response)
     assert not hasattr(response, "reasoning_content")
 

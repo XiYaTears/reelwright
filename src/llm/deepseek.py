@@ -222,12 +222,14 @@ class DeepSeekClient:
             total_tokens=_as_int(usage_raw.get("total_tokens")),
         )
         model = payload.get("model")
+        response_id = payload.get("id")
         return LLMResponse(
             content=content,
             tool_calls=tuple(tool_calls),
             finish_reason=finish_reason if isinstance(finish_reason, str) else None,
             usage=usage,
             model=model if isinstance(model, str) else self.model_name,
+            response_id=response_id if isinstance(response_id, str) else None,
         )
 
 

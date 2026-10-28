@@ -75,6 +75,7 @@ def _response(content: str, *calls: tuple[str, dict[str, Any]]) -> LLMResponse:
         content=content,
         tool_calls=tuple(_call(name, args, index) for index, (name, args) in enumerate(calls)),
         finish_reason="tool_calls" if calls else "stop",
+        response_id="fake-response",
     )
 
 
@@ -459,11 +460,94 @@ def test_llm_error_is_explicit_failure(tmp_path: Path) -> None:
             raise LLMError("网络错误：测试")
 
     factory = lambda dataset, requirements: FailingLLM()  # noqa: E731
-    result, _, _ = _run(_normal_input(), tmp_path=tmp_path, llm_factory=factory)
+    result, _, trace_path = _run(_normal_input(), tmp_path=tmp_path, llm_factory=factory)
     output = result.output or {}
     assert int(result.exit_code) == 5
     assert output["status"] == "failed"
     assert output["failure"]["code"] == "llm_error"
+    events = _trace_events(trace_path)
+    finalize = next(event for event in events if event["type"] == "finalize")
+    assert set(finalize) >= {"estimate", "rules", "mismatch", "budget"}
+    run_end = next(event for event in events if event["type"] == "run_end")
+    assert run_end["exit_code"] == 5
+
+
+def test_internal_error_trace_has_exit_code(tmp_path: Path, monkeypatch) -> None:
+    def boom(**kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("src.agent.runner.build_graph", boom)
+    result, _, trace_path = _run(_normal_input(), tmp_path=tmp_path)
+    assert result.output is None
+    assert int(result.exit_code) == 1
+    assert "内部错误" in (result.stderr or "")
+    run_end = next(
+        event for event in _trace_events(trace_path) if event["type"] == "run_end"
+    )
+    assert run_end["status"] == "internal_error"
+    assert run_end["exit_code"] == 1
+
+
+def test_skipped_batch_containing_finish_is_incomplete(tmp_path: Path) -> None:
+    """工具预算跳过整批时不能保留 agent 的 finish 语义，否则会误判 completed。"""
+    script = _make_script(28)
+
+    def first_batch(messages):
+        calls = [("submit_script", script)] + [
+            ("search_materials", {"query": "不存在"}) for _ in range(14)
+        ]
+        return _response("提交并批量检索", *calls)
+
+    def second_batch(messages):
+        return _response(
+            "继续检索并收尾",
+            ("search_materials", {"query": "不存在"}),
+            ("finish", {"outcome": "completed_intent"}),
+        )
+
+    factory = lambda dataset, requirements: FakeLLM([first_batch, second_batch])  # noqa: E731
+    result, _, trace_path = _run(_normal_input(), tmp_path=tmp_path, llm_factory=factory)
+    output = result.output or {}
+    assert output["status"] == "incomplete"
+    assert int(result.exit_code) == 4
+    assert output["failure"]["code"] == "tool_call_limit"
+    assert output["budget"]["tool_calls_used"] == 15
+    skipped_names = [item["name"] for item in output["skipped_tool_calls"]]
+    assert "finish" in skipped_names
+    assert any(event["type"] == "skipped_tool_calls" for event in _trace_events(trace_path))
+
+
+def test_last_step_no_action_with_passing_checks_completes(tmp_path: Path) -> None:
+    """末步模型主动结束（无 tool_calls）且复算通过 → completed，不因触顶判 incomplete。"""
+    script = _make_script(28)
+    sequence = [
+        _response("提交", ("submit_script", script)),
+        _response(
+            "检查",
+            ("estimate_duration", _estimate_args(script)),
+            ("check_rules", script),
+        ),
+        _response("检查完毕，不再调用工具"),
+    ]
+    factory = lambda dataset, requirements: FakeLLM(sequence)  # noqa: E731
+    result, _, _ = _run(_normal_input(), tmp_path=tmp_path, llm_factory=factory, max_steps=3)
+    output = result.output or {}
+    assert output["status"] == "completed"
+    assert int(result.exit_code) == 0
+    assert output["budget"]["steps_used"] == 3
+
+
+def test_trace_response_id_and_input_validation_fields(tmp_path: Path) -> None:
+    result, _, trace_path = _run(_normal_input(), tmp_path=tmp_path)
+    assert (result.output or {})["status"] == "completed"
+    events = _trace_events(trace_path)
+    validation = next(event for event in events if event["type"] == "input_validation")
+    assert validation["ok"] is True
+    assert validation["missing_fields"] == []
+    assert validation["invalid_fields"] == []
+    model_events = [event for event in events if event["type"] == "model_response"]
+    assert model_events
+    assert all(event["response_id"] == "mock-response-" + str(event["step"]) for event in model_events)
 
 
 # ---------------- 输出不变量 ----------------

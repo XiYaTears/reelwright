@@ -69,6 +69,8 @@ def test_real_ac01_normal_hard_constraints(tmp_path: Path) -> None:
         fact = dataset.get_fact(citation["material_id"], citation["fact_id"])
         assert fact is not None and citation["quote"] in fact.text
     assert any(event["type"] == "model_response" for event in trace)
+    model_events = [event for event in trace if event["type"] == "model_response"]
+    assert all(event.get("response_id") for event in model_events)
 
 
 def test_real_no_hit_asks_user(tmp_path: Path) -> None:

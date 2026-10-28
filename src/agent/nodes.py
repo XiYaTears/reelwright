@@ -236,6 +236,7 @@ def make_agent_node(
         trace.event(
             "model_response",
             step=step,
+            response_id=response.response_id,
             decision_note=note,
             decision_note_source="missing" if note_missing else "model",
             decision_summary=decision_summary,
@@ -291,7 +292,12 @@ def make_tool_node(
                 max_tool_calls=budgets.max_tool_calls,
                 skipped=skipped,
             )
-            return {"skipped_tool_calls": skipped, "tool_calls_used": used}
+            # 未执行的批不能保留 agent 写入的 finish/ask_user 语义：强制走预算收尾。
+            return {
+                "skipped_tool_calls": skipped,
+                "tool_calls_used": used,
+                "terminal": None,
+            }
 
         new_messages: list[dict[str, Any]] = []
         tool_errors: list[dict[str, Any]] = []

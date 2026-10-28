@@ -35,6 +35,7 @@ class LLMResponse:
     finish_reason: str | None = None
     usage: Usage = field(default_factory=Usage)
     model: str | None = None
+    response_id: str | None = None
 
 
 class LLMError(RuntimeError):

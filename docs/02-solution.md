@@ -22,7 +22,7 @@
 
 ```
 CLI (argparse / --input JSON)
- └─ runner：创建 TraceWriter → 输入校验（needs_input 也必须有 run_start/input_validation/run_end）
+ └─ runner：环境/配置与数据集 fail-fast → 创建 TraceWriter → 输入校验（needs_input 也必须有 run_start/input_validation/run_end）
       → StateGraph.invoke(initial_state)
       ├─ agent 节点 ──> LLMClient（DeepSeek 真实 / Mock 离线）
       │      └─ 返回 content + tool_calls（全部保留，逐条执行）→ trace
@@ -101,7 +101,7 @@ docs/
 
 ### 3.3 运行期对象装配
 
-- `runner` 读取 `Requirements`；**先创建 `TraceWriter`，再做输入校验**（`needs_input` 场景也要留下 `run_start` / `input_validation` / `run_end`），随后构造 `Dataset`（含 `data_digest`）与 `LLMClient`。
+- `runner` 读取 `Requirements`；**先做环境/配置与数据集 fail-fast（缺配置/数据集不可用 → 内部错误退出 1），再创建 `TraceWriter`，然后做输入校验**（`needs_input` 场景也要留下 `run_start` / `input_validation` / `run_end`）。
 - 三个业务工具以"闭包绑定运行上下文"的方式注册：`search_materials(dataset)`、`estimate_duration(target_duration_s)`、`check_rules(dataset, platform)`。**目标时长与平台来自输入，不由模型传参**，模型无法通过工具参数篡改判定基准。
 - `agent`/`tools`/`finalize` 节点由 `nodes.py` 工厂接收 `(llm, registry, dataset, requirements, trace, budgets)` 后闭包生成；`RunState` 只放决策相关数据，trace/配置不进 state。
 
@@ -353,12 +353,12 @@ def route_after_tools(state) -> Literal["agent", "finalize"]:
 
 | 项 | 默认 | 强制方式 | 触顶结果 |
 | --- | --- | --- | --- |
-| 模型步数 | 8（CLI 可调 1–20） | `agent` 节点前路由判断；第 8 步的工具批执行完后不再回 agent | **末步含 `finish` 且 finalize 复算通过 → `completed`**；末步 `finish` 但复算不过 → `failed`；**未 finish 即触顶 → `incomplete`**，`failure.code=step_limit` |
+| 模型步数 | 8（CLI 可调 1–20） | `agent` 节点前路由判断；第 8 步的工具批执行完后不再回 agent | **末步含 `finish` 或 `no_action` 且 finalize 复算通过 → `completed`**；末步主动结束但复算不过 → `failed`；**编排层强制收尾（触顶且未主动结束）→ `incomplete`**，`failure.code=step_limit` |
 | 工具调用数 | `2 × 步数上限`（默认 16） | **批执行前预检**：`used + len(批) > max` ⇒ 本批不执行，trace 记 `skipped_tool_calls` 后收尾；批后 `used >= max` 即回 finalize（不进入下一轮 agent） | 已 `finish` 则按复算判定，否则 `incomplete`，`failure.code=tool_call_limit` |
 | 单批 tool_calls | 不额外限制（受模型行为约束） | —— | —— |
 | LangGraph 递归 | `2 × 步数上限 + 5` | `compiled.invoke(..., config={"recursion_limit": ...})` 作最后保险 | 捕获 `GraphRecursionError` → `failed`，`failure.code=orchestration_error` |
 
-**边界语义（写死并测试）**：预算耗尽不等于未完成——只要模型在**最后一个允许步**给出 `finish` 且 finalize 复算通过，就判 `completed`；只有"触顶且未 finish / finish 后复算不过"才得到 `incomplete` / `failed`。预算触顶时仍用最新提交稿做一次估算/规则复算，把未解决项写进 `failure.evidence`，不伪造通过。
+**边界语义（写死并测试）**：预算耗尽不等于未完成——只要模型在**最后一个允许步**主动结束（`finish` 或无 tool_calls 的 `no_action`）且 finalize 复算通过，就判 `completed`；只有"编排层强制收尾（触顶且未主动结束）/ 主动结束但复算不过"才得到 `incomplete` / `failed`。预算触顶时仍用最新提交稿做一次估算/规则复算，把未解决项写进 `failure.evidence`，不伪造通过。
 
 ### 5.4 典型步数
 
@@ -628,7 +628,7 @@ within          = window_min ≤ total_s ≤ window_max
    - `terminal == finish` 且 `estimate.within && rules.ok` → `completed`（即使模型声明 `cannot_satisfy`，以复算为准，并附风险说明）；
    - `terminal == finish` 且校验不过 → `failed`（`finish_outcome == cannot_satisfy` 时为 `cannot_satisfy`，否则 `checks_failed_after_finish`，evidence 带最终估算/违规明细）；
    - `terminal == no_action`：校验通过 → `completed`（无 tool_calls 也是 AGENTS 允许的终止条件）；不通过 → `failed`（`model_terminated_without_finish`）；
-   - 预算触顶 → `incomplete`（`step_limit` / `tool_call_limit`），附最终草稿与未解决项。
+   - 预算触顶 → `incomplete`（`step_limit` / `tool_call_limit`），附最终草稿与未解决项。**注意**：末步 `no_action` 且复算通过已在上一分支判 `completed`，不因预算触顶改判；只有编排层强制收尾才 `incomplete`。
 4. 组装风险：warning 级违规、工具错误历史摘要、digest 不一致提示、"模型声明无法满足但复算通过"提示。
 
 ## 9. 状态机
@@ -675,7 +675,7 @@ within          = window_min ≤ total_s ≤ window_max
 | --- | --- | --- |
 | `run_start` | 图启动前 | `mode`、`input`（无密钥）、`budget`、`data_digest`、`formula_version`、`model`（真实模式）、`injection`（注入配置摘要） |
 | `input_validation` | 输入校验后 | `ok`、`missing_fields[]`、`invalid_fields[]`、`status`（needs_input 时） |
-| `model_response` | 每次模型调用后 | `step`、`decision_note`（模型在 content 中的一句 ≤40 字本步说明，可能为 `""`）、`decision_note_source`（`model`/`missing`）、`decision_summary`（编排层生成的事实摘要：上一步实际观察摘要 + 本步实际工具名/关键参数；首步固定为"首步：检索主题相关素材"或"首步：<实际工具>"，不推断模型动机）、`decision_summary_source`（恒为 `orchestrator`）、`content_excerpt`（≤200 字可见回复，供审计，非思维）、`tool_calls[{name, arguments}]`、`finish_reason`、`usage{prompt_tokens, completion_tokens}` |
+| `model_response` | 每次模型调用后 | `step`、`response_id`（真实模式为 DeepSeek 响应 `id`；离线 mock 为合成 ID；用于人工交叉核对）、`decision_note`（模型在 content 中的一句 ≤40 字本步说明，可能为 `""`）、`decision_note_source`（`model`/`missing`）、`decision_summary`（编排层生成的事实摘要：上一步实际观察摘要 + 本步实际工具名/关键参数；首步固定为"首步：检索主题相关素材"或"首步：<实际工具>"，不推断模型动机）、`decision_summary_source`（恒为 `orchestrator`）、`content_excerpt`（≤200 字可见回复，供审计，非思维）、`tool_calls[{name, arguments}]`、`finish_reason`、`usage{prompt_tokens, completion_tokens}` |
 | `tool_result` | 每个 tool_call 执行后 | `step`、`tool`、`call_id`、`ok`、`duration_ms`、`injected`、`error{code,message,retryable}`、`observation`（结构化摘要，如 `{"total_matched":1,"material_ids":["P01"]}`、`{"total_duration_s":38,"within":false,"window":[27,33]}`、`{"errors":2,"rule_ids":["CITE-001"],"shot_indexes":[2]}`）、`decision_hint`（机械摘要，如 `no_hits:rewrite_or_ask_user`，由观察结果规则化生成，不是模型思维） |
 | `finalize` | 收尾节点 | `step`、`status`、`failure_code`、`estimate`（摘要）、`rules`（统计+违规 ID）、`mismatch`、`budget` |
 | `run_end` | 输出组装后 | `status`、`steps_used`、`tool_calls_used`、`duration_ms`、`exit_code` |
@@ -701,7 +701,7 @@ within          = window_min ≤ total_s ≤ window_max
 | 用途 | 验收演示、DoD 真实 trace、文档证据 | 自动化测试、无网复跑、CI |
 | 差异点 | 仅 LLM 客户端与 run_start 的 mode/model 字段 | 同左 |
 
-真实模式参数：`temperature=0.0`、`max_tokens=4096`、`tool_choice="auto"`、`stream=false`；思考模式不主动关闭（`tool_choice` 只允许 auto，符合实测约束），响应中的 `reasoning_content` 一律丢弃；HTTP 超时 60 秒，超时/5xx 重试 2 次（间隔 1 秒、2 秒），仍失败则本次运行 `failed`（`llm_error`），不伪造结果。
+真实模式参数：`temperature=0.0`、`max_tokens=4096`、`tool_choice="auto"`、`stream=false`；思考模式不主动关闭（`tool_choice` 只允许 auto，符合实测约束），响应中的 `reasoning_content` 一律丢弃；HTTP 超时 60 秒，超时/5xx 重试 2 次（间隔 1 秒、2 秒），仍失败则本次运行 `failed`（`llm_error`）**、退出码 5，仍有 output/trace 便于复盘**，不伪造结果。配置缺失、数据集不可用、未捕获异常才是内部错误（退出码 1）。
 
 **base URL 口径**：`.env.example` 统一写"含 `/v1` 的 OpenAI 兼容根"（如 `https://api.deepseek.com/v1`）；客户端 `normalize_base_url()` 去掉尾部 `/`，若不以 `/v1` 结尾自动补 `/v1`，再拼 `/chat/completions`，因此 `.env.local` 写成不带 `/v1` 的根地址（当前实际值）也能工作。README 写明该口径。
 
@@ -821,7 +821,7 @@ $env:PYTHONUTF8=1
 | 单元 | `tests/test_state.py`、`tests/test_trace.py`、`tests/test_prompt.py`、`tests/test_config.py` | 预算换算与非法值；trace JSONL 公共字段/seq/ts、密钥脱敏、递归移除 `reasoning_content`、覆盖写；prompt 含硬约束与 `decision_note` 要求；config 缺变量报错不泄漏值、`LLM_PROXY` 透传 |
 | 集成 | `tests/test_runner.py` | 正常 → `completed` 且 trace 顺序正确；**AC-05 核心数值**：首稿 38 秒（`>30`、`too_long`）→ 改稿 → 最终 28 秒（`≤30` 且 `within`）；**受控目标对照**：同数据下 target=30 → 38→28（压缩）、target=60 → 38→58（扩张），两条 trace 的 verdict/动作方向不同；**受控检索对照**：默认数据 → 命中→`completed` 且引用 P01，`--data-dir` 空素材变体 → ≥2 次 0 结果→`ask_user`→`needs_input`；可恢复失败 → `completed` 且 `tool_errors` 有注入记录；持续失败 → `failed`；**步数上限边界**：最后一个允许步 `finish` 且复算通过 → `completed`，同预算未 `finish` → `incomplete`；**工具调用预算 16/17 边界**：已用 16 时下一批预检失败 → 不执行、trace 有 `skipped_tool_calls`、`incomplete(tool_call_limit)`；15+2 同样整批跳过；`--max-steps 3` → `incomplete`；finish 与 ask_user 同批 → `failed`；**CITE-001 兜底**：旁白"效率提升 80%"无引用时即使 finish 也判 `failed`；`decision_note` 为空时 `decision_note_source=missing` 且 `decision_summary` 非空、有 content 时两者都在；输出时长/引用三方一致；每步 trace 无 `reasoning_content` |
 | 集成 | `tests/test_output.py` | 输出字段齐全；引用三元组全部可回溯；逐镜时长与总时长三方一致；`completed` 蕴含 `within && rules.ok`；`failed` 必有 `failure`；trace 无 `reasoning_content`、无密钥值；`data_digest`/`budget`/`trace_path` 正确（当前由 `test_runner.py` 覆盖，文件合并实现） |
-| 集成 | `tests/test_examples_evidence.py` | marker `evidence`；**第三轮证据齐备后默认执行**；遍历 `examples/`：用例目录必须含 input/command/output/trace/README，`output.<mode>.json` 与 `trace.<mode>.jsonl` 的 run_id/status/mode 一致，trace 为合法 JSONL 且首尾为 `run_start`/`run_end`；**缺失文件、mode/run_id/status 不一致、或 examples 无任何证据目录 → fail，不允许 skip/空跑**；真实性由需求方按 `docs/03` 复跑比对，测试不假装能验证 |
+| 集成 | `tests/test_examples_evidence.py` | marker `evidence`；默认执行；遍历 `examples/`：用例目录必须含 input/command/output/trace/README，`output.<mode>.json` 与 `trace.<mode>.jsonl` 的 run_id/status/mode 一致，trace 为合法 JSONL 且首尾为 `run_start`/`run_end`；**全部离线 command 在临时目录复跑，逐条比对 status/退出码/总时长/步数/工具调用数/注入标记/needs_input**；`model_response.response_id` 必须存在；**缺失/不一致/空 examples → fail，不允许 skip/空跑**；真实性由需求方按 `docs/03` 复跑比对，测试不假装能验证真实调用本身 |
 | 端到端 | `tests/test_cli.py` | 子进程跑 `python -m src.cli run` 各离线场景（AC-01–AC-08）；stdout 是合法 JSON；退出码 0/3/4/5 对应状态；缺失 `audience` → 3；输入 JSON 与 CLI 参数合并/覆盖；`--offline` 无密钥可跑；未知平台 → 3；非法注入 → 2；`--data-dir` 对照实验可复跑；AC-05/AC-08 命令可在 `examples/` 目录按 `command.*.txt` 原样复跑 |
 | 真实 | `tests/test_real_smoke.py -m real` | 正式真实决策证据跑 AC-03a / AC-08b no_hit / AC-04a（刺激必然发生，分别断言连续 0 结果有可见反应且无编造、与 hit 组动作不同、注入失败后重试/调整）；AC-05 real、AC-08a real 作为加分证据另跑并如实记录；断言硬约束（区间、引用可回溯、规则 error 0）；无密钥自动 skip |
 
@@ -872,7 +872,7 @@ examples/
 3. 真实证据必须来自真实 DeepSeek 调用：`run_start.model` 有值、`mode=real`；不得把 mock 结果改名冒充真实运行。
 4. 同一组的 `output` 与 `trace` 必须属于同一次运行（`run_id`、`status`、预算一致）；不允许跨运行拼接。
 5. 用例实际结果与预期分支不符时，保留真实结果并在 README 说明，**不得为满足验收条件重写证据**；由需求方评审决定是否需要重新运行。
-6. `tests/test_examples_evidence.py`（marker `evidence`）自动核对结构一致性（存在性、mode/run_id/status、trace 首尾事件）；**第三轮证据齐备后默认执行，缺文件/不一致/空 examples 一律 fail，不允许 skip**；真实性依赖上述流程约束、需求方按 `docs/03` 复跑比对与人工抽查，测试不假装能验证真实性。
+6. `tests/test_examples_evidence.py`（marker `evidence`）自动核对结构一致性（存在性、mode/run_id/status、trace 首尾事件）并复跑全部离线 command 对比归档 output；`model_response.response_id` 必须存在（真实为 DeepSeek 响应 ID，离线为合成 ID）。**默认执行，缺文件/不一致/空 examples 一律 fail，不允许 skip**；真实性依赖上述流程约束、需求方按 `docs/03` 复跑比对与人工抽查，测试不假装能验证真实性。
 
 #### 15.4.5 正式真实模式"决策证据"（三条刺激必然发生的场景）
 
