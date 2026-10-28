@@ -6,6 +6,14 @@
 
 短视频脚本 Agent：创作者给出主题、受众、平台、目标时长和风格，Agent 自主检索产品素材、生成分镜脚本、估算时长、检查品牌与平台规则，产出有事实依据、满足时长限制、可直接编辑的脚本。所有产品事实必须能追溯到素材库，禁止编造。
 
+### 1.1 技术栈（已批准选型）
+
+- Python 3.13.5 + 项目内 `.venv`；依赖锁定见 `requirements.txt`
+- 编排：LangGraph `==1.2.18` 显式 `StateGraph`（agent / tools / finalize 三节点），不使用 `create_react_agent`、`ToolNode` 等预构建件
+- 模型调用：httpx 直连 DeepSeek `/chat/completions`，统一 LLM 接口，真实与离线 mock 同接口替换
+- 测试：pytest，离线模式零网络零密钥
+- 框架只承担编排骨架；业务校验、预算、trace 由本项目实现，取舍与改动写入 `docs/02-solution.md`
+
 ## 2. 目录职责
 
 - `src/`：Agent 编排、模型接入、工具、业务状态与 CLI
