@@ -1,0 +1,11 @@
+# Python 3.13.5 / Windows
+# 安装：python -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# --- runtime ---
+langgraph==1.2.18
+langchain-core==1.7.0
+httpx==0.28.1
+python-dotenv==1.2.4
+
+# --- test ---
+pytest==9.2.0

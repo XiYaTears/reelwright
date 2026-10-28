@@ -1,0 +1,16 @@
+# local secrets
+.env
+.env.local
+
+# python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# runtime artifacts (CLI 默认输出目录)
+runs/
+
+# os
+.DS_Store
+Thumbs.db
