@@ -1,0 +1,1 @@
+$env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m src.cli run run --input examples\09_controlled_retrieval\no_hit\input.json --offline --data-dir examples\09_controlled_retrieval\no_hit_data --out examples\09_controlled_retrieval\no_hit\output.offline.json --trace examples\09_controlled_retrieval\no_hit\trace.offline.jsonl

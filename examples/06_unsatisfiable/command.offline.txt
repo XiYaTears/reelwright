@@ -1,0 +1,1 @@
+$env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m src.cli run run --input examples\06_unsatisfiable\input.json --offline --out examples\06_unsatisfiable\output.offline.json --trace examples\06_unsatisfiable\trace.offline.jsonl

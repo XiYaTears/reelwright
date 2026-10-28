@@ -1,0 +1,264 @@
+{
+  "run_id": "20261028T224526+0800-fa2b69",
+  "mode": "offline",
+  "status": "failed",
+  "input": {
+    "topic": "字幕功能上线",
+    "audience": "剪辑新手",
+    "platform": "kuaishou",
+    "target_duration_s": 30,
+    "style": "轻快教程",
+    "extra_notes": null
+  },
+  "script": {
+    "title": "记录生活的小瞬间",
+    "platform": "kuaishou",
+    "style": "轻快教程",
+    "target_duration_s": 30,
+    "window": {
+      "min_s": 27,
+      "max_s": 33
+    },
+    "shots": [
+      {
+        "index": 1,
+        "visual": "画面 1：生活场景记录",
+        "narration": "记录生活里的小瞬间记录生活里的小瞬间记录生活里的小瞬间记",
+        "caption": "",
+        "duration_s": 7,
+        "duration_breakdown": {
+          "narration_chars": 28,
+          "caption_chars": 0,
+          "narration_s": 7,
+          "caption_s": 0
+        },
+        "citations": []
+      },
+      {
+        "index": 2,
+        "visual": "画面 2：生活场景记录",
+        "narration": "记录生活里的小瞬间记录生活里的小瞬间记录生活里的小瞬间记",
+        "caption": "",
+        "duration_s": 7,
+        "duration_breakdown": {
+          "narration_chars": 28,
+          "caption_chars": 0,
+          "narration_s": 7,
+          "caption_s": 0
+        },
+        "citations": []
+      },
+      {
+        "index": 3,
+        "visual": "画面 3：手机竖屏展示功能",
+        "narration": "支持字幕",
+        "caption": "支持字幕",
+        "duration_s": 2,
+        "duration_breakdown": {
+          "narration_chars": 4,
+          "caption_chars": 4,
+          "narration_s": 1,
+          "caption_s": 1
+        },
+        "citations": [
+          {
+            "material_id": "P01",
+            "fact_id": "P01-F1",
+            "quote": "支持字幕"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "visual": "画面 4：生活场景记录",
+        "narration": "记录生活里的小瞬间记录生活里的小瞬间记录生活里的小瞬间记",
+        "caption": "",
+        "duration_s": 7,
+        "duration_breakdown": {
+          "narration_chars": 28,
+          "caption_chars": 0,
+          "narration_s": 7,
+          "caption_s": 0
+        },
+        "citations": []
+      },
+      {
+        "index": 5,
+        "visual": "画面 5：生活场景记录",
+        "narration": "记录生活里的小瞬间记录生活里的小瞬间记录生活里的小瞬间记",
+        "caption": "",
+        "duration_s": 7,
+        "duration_breakdown": {
+          "narration_chars": 28,
+          "caption_chars": 0,
+          "narration_s": 7,
+          "caption_s": 0
+        },
+        "citations": []
+      },
+      {
+        "index": 6,
+        "visual": "画面 6：生活场景记录",
+        "narration": "记录生活里的小瞬间记录生活里的小瞬间记录生活里的小瞬间记录生活里",
+        "caption": "",
+        "duration_s": 8,
+        "duration_breakdown": {
+          "narration_chars": 32,
+          "caption_chars": 0,
+          "narration_s": 8,
+          "caption_s": 0
+        },
+        "citations": []
+      }
+    ],
+    "estimated_total_duration_s": 38,
+    "citations": [
+      {
+        "material_id": "P01",
+        "fact_id": "P01-F1",
+        "quote": "支持字幕",
+        "shot_indexes": [
+          3
+        ]
+      }
+    ],
+    "risks": []
+  },
+  "checks": {
+    "estimate": {
+      "ok": true,
+      "per_shot": [
+        {
+          "index": 1,
+          "narration_chars": 28,
+          "caption_chars": 0,
+          "narration_s": 7,
+          "caption_s": 0,
+          "duration_s": 7
+        },
+        {
+          "index": 2,
+          "narration_chars": 28,
+          "caption_chars": 0,
+          "narration_s": 7,
+          "caption_s": 0,
+          "duration_s": 7
+        },
+        {
+          "index": 3,
+          "narration_chars": 4,
+          "caption_chars": 4,
+          "narration_s": 1,
+          "caption_s": 1,
+          "duration_s": 2
+        },
+        {
+          "index": 4,
+          "narration_chars": 28,
+          "caption_chars": 0,
+          "narration_s": 7,
+          "caption_s": 0,
+          "duration_s": 7
+        },
+        {
+          "index": 5,
+          "narration_chars": 28,
+          "caption_chars": 0,
+          "narration_s": 7,
+          "caption_s": 0,
+          "duration_s": 7
+        },
+        {
+          "index": 6,
+          "narration_chars": 32,
+          "caption_chars": 0,
+          "narration_s": 8,
+          "caption_s": 0,
+          "duration_s": 8
+        }
+      ],
+      "total_duration_s": 38,
+      "target_duration_s": 30,
+      "window": {
+        "min_s": 27,
+        "max_s": 33
+      },
+      "within": false,
+      "verdict": "too_long",
+      "over_by_s": 5,
+      "under_by_s": 0,
+      "formula_version": "duration-v1"
+    },
+    "rules": {
+      "ok": false,
+      "platform": "kuaishou",
+      "violations": [
+        {
+          "rule_id": "PLAT-kuaishou-DUR-001",
+          "category": "platform",
+          "severity": "error",
+          "shot_index": null,
+          "field": null,
+          "matched_text": "38",
+          "message": "总时长 38s 超过平台上限 25s",
+          "suggestion": "压缩旁白/字幕或减少分镜后重新估算"
+        }
+      ],
+      "stats": {
+        "shots_checked": 6,
+        "rules_checked": 23,
+        "errors": 1,
+        "warnings": 0,
+        "truncated": false
+      }
+    },
+    "engine": "finalize",
+    "mismatch": {
+      "estimate": false,
+      "rules": false
+    }
+  },
+  "needs_input": null,
+  "failure": {
+    "code": "cannot_satisfy",
+    "message": "finish 时最终复算未通过",
+    "evidence": {
+      "finish_outcome": "cannot_satisfy",
+      "estimate": {
+        "total_duration_s": 38,
+        "window": {
+          "min_s": 27,
+          "max_s": 33
+        },
+        "verdict": "too_long",
+        "within": false
+      },
+      "rule_errors": [
+        {
+          "rule_id": "PLAT-kuaishou-DUR-001",
+          "category": "platform",
+          "severity": "error",
+          "shot_index": null,
+          "field": null,
+          "matched_text": "38",
+          "message": "总时长 38s 超过平台上限 25s",
+          "suggestion": "压缩旁白/字幕或减少分镜后重新估算"
+        }
+      ],
+      "platform_max_total_duration_s": 25,
+      "tool_error_count": 0
+    }
+  },
+  "tool_errors": [],
+  "skipped_tool_calls": [],
+  "risks": [],
+  "budget": {
+    "max_steps": 8,
+    "steps_used": 6,
+    "max_tool_calls": 16,
+    "tool_calls_used": 7
+  },
+  "data_digest": "98ec7deceba7",
+  "trace_path": "examples\\06_unsatisfiable\\trace.offline.jsonl",
+  "generated_at": "2026-10-28T22:45:26+08:00"
+}

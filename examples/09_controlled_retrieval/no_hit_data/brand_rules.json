@@ -1,0 +1,27 @@
+{
+  "version": "brand-rules-v1",
+  "note": "全部为合成内部试用规则，非法务级依据。",
+  "brand_name": "小影",
+  "banned_terms": [
+    { "rule_id": "BRAND-001", "term": "最强", "severity": "error", "reason": "绝对化用语", "suggestion": "删除绝对化表述或改为非绝对化描述" },
+    { "rule_id": "BRAND-002", "term": "顶级", "severity": "error", "reason": "绝对化用语", "suggestion": "删除绝对化表述" },
+    { "rule_id": "BRAND-003", "term": "绝对", "severity": "error", "reason": "绝对化用语", "suggestion": "删除绝对化表述" },
+    { "rule_id": "BRAND-004", "term": "永久", "severity": "error", "reason": "承诺性用语", "suggestion": "删除永久性承诺" },
+    { "rule_id": "BRAND-005", "term": "100%", "severity": "error", "reason": "绝对化效果承诺", "suggestion": "删除无法证明的效果承诺" },
+    { "rule_id": "BRAND-006", "term": "全网最低", "severity": "error", "reason": "价格绝对化表述", "suggestion": "删除价格绝对化表述" },
+    { "rule_id": "BRAND-007", "term": "秒杀", "severity": "error", "reason": "促销夸大用语", "suggestion": "删除促销夸大用语" },
+    { "rule_id": "BRAND-008", "term": "国家级", "severity": "error", "reason": "资质背书类表述", "suggestion": "删除无素材依据的资质表述" },
+    { "rule_id": "BRAND-009", "term": "独家", "severity": "error", "reason": "独家性承诺", "suggestion": "删除独家性承诺" },
+    { "rule_id": "BRAND-010", "term": "零风险", "severity": "error", "reason": "风险承诺类表述", "suggestion": "删除风险承诺" }
+  ],
+  "exaggeration_patterns": [
+    { "rule_id": "EXAG-001", "pattern": "保证[^，。；\\n]{0,10}(效果|收益|见效)", "severity": "error", "reason": "效果保证类夸大表述", "suggestion": "删除保证/承诺性表述" },
+    { "rule_id": "EXAG-002", "pattern": "(立即|马上|瞬间)(见效|变美|瘦身)", "severity": "error", "reason": "即时效果类夸大表述", "suggestion": "删除即时效果承诺" },
+    { "rule_id": "EXAG-003", "pattern": "(治愈|根治|治疗)[^，。；\\n]{0,6}", "severity": "error", "reason": "医疗功效类表述", "suggestion": "删除医疗功效表述" }
+  ],
+  "claim_patterns": [
+    { "rule_id": "CITE-001", "pattern": "\\d+(?:\\.\\d+)?%", "label": "百分比数据" },
+    { "rule_id": "CITE-002", "pattern": "\\d+(?:\\.\\d+)?\\s*(?:倍|元|mAh|GB|MB|W|Hz|fps|K|P)", "label": "参数/金额类数据" },
+    { "rule_id": "CITE-003", "pattern": "认证|专利|质检|医用|国家级|独家|首创|唯一|权威|指定", "label": "资质/背书类表述" }
+  ]
+}

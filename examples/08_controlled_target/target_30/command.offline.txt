@@ -1,0 +1,1 @@
+$env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m src.cli run run --input examples\08_controlled_target\target_30\input.json --offline --out examples\08_controlled_target\target_30\output.offline.json --trace examples\08_controlled_target\target_30\trace.offline.jsonl

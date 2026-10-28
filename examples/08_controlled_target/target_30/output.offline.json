@@ -1,0 +1,202 @@
+{
+  "run_id": "20261028T224325+0800-7f7697",
+  "mode": "offline",
+  "status": "completed",
+  "input": {
+    "topic": "字幕功能上线",
+    "audience": "剪辑新手",
+    "platform": "douyin",
+    "target_duration_s": 30,
+    "style": "轻快教程",
+    "extra_notes": null
+  },
+  "script": {
+    "title": "记录生活的小瞬间",
+    "platform": "douyin",
+    "style": "轻快教程",
+    "target_duration_s": 30,
+    "window": {
+      "min_s": 27,
+      "max_s": 33
+    },
+    "shots": [
+      {
+        "index": 1,
+        "visual": "画面 1：生活场景记录",
+        "narration": "记录生活里的小瞬间记录生活里的小瞬间记录生活里的小瞬间记",
+        "caption": "",
+        "duration_s": 7,
+        "duration_breakdown": {
+          "narration_chars": 28,
+          "caption_chars": 0,
+          "narration_s": 7,
+          "caption_s": 0
+        },
+        "citations": []
+      },
+      {
+        "index": 2,
+        "visual": "画面 2：生活场景记录",
+        "narration": "记录生活里的小瞬间记录生活里的小瞬间记录生活里的小瞬间记",
+        "caption": "",
+        "duration_s": 7,
+        "duration_breakdown": {
+          "narration_chars": 28,
+          "caption_chars": 0,
+          "narration_s": 7,
+          "caption_s": 0
+        },
+        "citations": []
+      },
+      {
+        "index": 3,
+        "visual": "画面 3：手机竖屏展示功能",
+        "narration": "支持字幕",
+        "caption": "支持字幕",
+        "duration_s": 2,
+        "duration_breakdown": {
+          "narration_chars": 4,
+          "caption_chars": 4,
+          "narration_s": 1,
+          "caption_s": 1
+        },
+        "citations": [
+          {
+            "material_id": "P01",
+            "fact_id": "P01-F1",
+            "quote": "支持字幕"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "visual": "画面 4：生活场景记录",
+        "narration": "记录生活里的小瞬间记录生活里的小瞬间记录生活里的",
+        "caption": "",
+        "duration_s": 6,
+        "duration_breakdown": {
+          "narration_chars": 24,
+          "caption_chars": 0,
+          "narration_s": 6,
+          "caption_s": 0
+        },
+        "citations": []
+      },
+      {
+        "index": 5,
+        "visual": "画面 5：生活场景记录",
+        "narration": "记录生活里的小瞬间记录生活里的小瞬间记录生活里的",
+        "caption": "",
+        "duration_s": 6,
+        "duration_breakdown": {
+          "narration_chars": 24,
+          "caption_chars": 0,
+          "narration_s": 6,
+          "caption_s": 0
+        },
+        "citations": []
+      }
+    ],
+    "estimated_total_duration_s": 28,
+    "citations": [
+      {
+        "material_id": "P01",
+        "fact_id": "P01-F1",
+        "quote": "支持字幕",
+        "shot_indexes": [
+          3
+        ]
+      }
+    ],
+    "risks": []
+  },
+  "checks": {
+    "estimate": {
+      "ok": true,
+      "per_shot": [
+        {
+          "index": 1,
+          "narration_chars": 28,
+          "caption_chars": 0,
+          "narration_s": 7,
+          "caption_s": 0,
+          "duration_s": 7
+        },
+        {
+          "index": 2,
+          "narration_chars": 28,
+          "caption_chars": 0,
+          "narration_s": 7,
+          "caption_s": 0,
+          "duration_s": 7
+        },
+        {
+          "index": 3,
+          "narration_chars": 4,
+          "caption_chars": 4,
+          "narration_s": 1,
+          "caption_s": 1,
+          "duration_s": 2
+        },
+        {
+          "index": 4,
+          "narration_chars": 24,
+          "caption_chars": 0,
+          "narration_s": 6,
+          "caption_s": 0,
+          "duration_s": 6
+        },
+        {
+          "index": 5,
+          "narration_chars": 24,
+          "caption_chars": 0,
+          "narration_s": 6,
+          "caption_s": 0,
+          "duration_s": 6
+        }
+      ],
+      "total_duration_s": 28,
+      "target_duration_s": 30,
+      "window": {
+        "min_s": 27,
+        "max_s": 33
+      },
+      "within": true,
+      "verdict": "within",
+      "over_by_s": 0,
+      "under_by_s": 0,
+      "formula_version": "duration-v1"
+    },
+    "rules": {
+      "ok": true,
+      "platform": "douyin",
+      "violations": [],
+      "stats": {
+        "shots_checked": 5,
+        "rules_checked": 24,
+        "errors": 0,
+        "warnings": 0,
+        "truncated": false
+      }
+    },
+    "engine": "finalize",
+    "mismatch": {
+      "estimate": false,
+      "rules": false
+    }
+  },
+  "needs_input": null,
+  "failure": null,
+  "tool_errors": [],
+  "skipped_tool_calls": [],
+  "risks": [],
+  "budget": {
+    "max_steps": 8,
+    "steps_used": 7,
+    "max_tool_calls": 16,
+    "tool_calls_used": 9
+  },
+  "data_digest": "98ec7deceba7",
+  "trace_path": "examples\\08_controlled_target\\target_30\\trace.offline.jsonl",
+  "generated_at": "2026-10-28T22:43:25+08:00"
+}

@@ -1,0 +1,1 @@
+$env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m src.cli run run --input examples\04_tool_failure\a_recoverable\input.json --offline --out examples\04_tool_failure\a_recoverable\output.offline.json --trace examples\04_tool_failure\a_recoverable\trace.offline.jsonl --inject-failure search_materials=timeout@1

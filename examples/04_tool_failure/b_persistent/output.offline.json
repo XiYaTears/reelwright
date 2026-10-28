@@ -1,0 +1,60 @@
+{
+  "run_id": "20261028T224321+0800-7f7697",
+  "mode": "offline",
+  "status": "failed",
+  "input": {
+    "topic": "字幕功能上线",
+    "audience": "剪辑新手",
+    "platform": "douyin",
+    "target_duration_s": 30,
+    "style": "轻快教程",
+    "extra_notes": null
+  },
+  "script": null,
+  "checks": null,
+  "needs_input": null,
+  "failure": {
+    "code": "tool_failure_unrecovered",
+    "message": "没有可复算的提交稿",
+    "evidence": {
+      "tool_error_count": 2
+    }
+  },
+  "tool_errors": [
+    {
+      "tool": "search_materials",
+      "code": "unavailable",
+      "message": "注入故障：search_materials 第 1 次调用失败（unavailable）",
+      "call_index": 1,
+      "injected": true,
+      "step": 1,
+      "retryable": true
+    },
+    {
+      "tool": "search_materials",
+      "code": "unavailable",
+      "message": "注入故障：search_materials 第 2 次调用失败（unavailable）",
+      "call_index": 2,
+      "injected": true,
+      "step": 2,
+      "retryable": true
+    }
+  ],
+  "skipped_tool_calls": [],
+  "risks": [
+    {
+      "category": "tool",
+      "severity": "warning",
+      "message": "工具失败历史：search_materials:unavailable ×2"
+    }
+  ],
+  "budget": {
+    "max_steps": 8,
+    "steps_used": 3,
+    "max_tool_calls": 16,
+    "tool_calls_used": 3
+  },
+  "data_digest": "98ec7deceba7",
+  "trace_path": "examples\\04_tool_failure\\b_persistent\\trace.offline.jsonl",
+  "generated_at": "2026-10-28T22:43:21+08:00"
+}

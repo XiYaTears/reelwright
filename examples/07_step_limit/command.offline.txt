@@ -1,0 +1,1 @@
+$env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m src.cli run run --input examples\07_step_limit\input.json --offline --out examples\07_step_limit\output.offline.json --trace examples\07_step_limit\trace.offline.jsonl --max-steps 3
