@@ -776,6 +776,21 @@ CLI（可重复，与 JSON 合并，同一工具只允许一条规则，重复�
 - 代价：图很简单（3 节点），LangGraph 的价值主要在状态通道与循环骨架，算力/复杂度收益有限；版本升级需跟 API（已 pin 1.2.18）。若后续需求简化为单次调用，可评估去掉 LangGraph——当前为满足工程契约（`AGENTS.md`）"显式 StateGraph + 逐步骤可观测"的要求而保留。
 - 我们"改了什么"：没有替换 LangGraph 的图执行；在节点内部自写 agent/tool/finalize 语义、自写 DeepSeek 客户端、自写 trace、自写预算与失败注入，图只承担骨架。
 
+### 13.4 修改结果（可核对）
+
+上面这些改动的收益不是口头结论，都能在仓库里对上：
+
+| LangGraph 的职责 | 我们额外做的封装/修改 | 可核对的结果 |
+| --- | --- | --- |
+| 图执行与循环 | 三节点显式图；agent/tools/finalize 语义自写 | `examples/04_tool_failure/a_recoverable/real/trace.real.jsonl`：注入失败后模型仍按观察继续调工具并完成 |
+| 状态通道 | `messages`/`tool_errors` 用 reducer 累积；草稿、digest 等业务状态自管 | `tests/test_runner.py` 覆盖一次响应多个 `tool_calls` 的逐条回填与状态更新 |
+| 终止与预算 | 自写路由与批前预算预检；`recursion_limit` 只当兜底 | `examples/07_step_limit/output.offline.json`（`incomplete`/`step_limit`、保留草稿）；跳过批含 `finish` 的边界用例 |
+| 模型接入 | httpx 直连 DeepSeek，不用 `ChatDeepSeek` | 真实 trace 的 `model_response` 带 DeepSeek `response_id`/usage；无 `reasoning_content`；`tests/test_deepseek.py` |
+| 观测 | 自写 JSONL trace，字段按验收需要设计 | `docs/03-evaluation.md` §3.1 两条真实决策证据可在 trace 中逐事件核对 |
+| 最终判定 | finalize 独立复算，模型 `finish` 只作意图 | `examples/06_unsatisfiable/output.offline.json`：明确 `failed` 并给冲突证据，不因模型声明而放过 |
+
+这也是选型的实际代价/收益：如果用 `create_react_agent` 之类的预构建件，多 `tool_calls` 的回填、失败注入、预算边界和 trace 字段都不受我们控制，上面这些证据就产不出来；所以这里保留 LangGraph 的骨架、把可判定性放在自己手里，而不是为了"用框架"而用。
+
 ## 14. 技术选型与依赖
 
 | 选择 | 版本/方案 | 理由 | 放弃的方案 |
