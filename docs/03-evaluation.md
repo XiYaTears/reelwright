@@ -19,25 +19,28 @@
 
 | 命令 | 结果 |
 | --- | --- |
-| `pytest -q` | `198 passed, 3 deselected` |
-| `pytest -q -m real` | `3 passed, 198 deselected` |
+| `pytest -q` | `215 passed, 3 deselected` |
+| `pytest -q -m real` | `3 passed, 215 deselected` |
 
 离线测试覆盖：dataset/script/duration/rules/materials/registry/deepseek/mock/state/trace/prompt/config、
 LangGraph 全链路（正常、AC-05 38→28、AC-03a/b、AC-04a/b、AC-06、AC-07、AC-08a/b、CITE-001 兜底、
 步数/工具预算边界、decision_note/summary 来源）、CLI 端到端（退出码/输入 JSON 合并/注入配置）。
 真实测试覆盖：AC-01 正常生成硬约束、无素材数据集 → `needs_input`、注入 timeout 后可恢复。
+证据测试对**全部离线 command** 在临时目录逐条复跑，核对 status/退出码/总时长/步数/工具调用数/
+注入标记/`needs_input` 与归档 output 一致；所有 `model_response` 均要求 `response_id` 非空
+（真实模式为 DeepSeek 响应 ID，离线为合成 ID）。
 
 ## 3. 验收场景结果
 
 | 场景 | 结果 | 关键证据 |
 | --- | --- | --- |
-| AC-01 正常生成 | offline `completed` 28s；real `completed` 27s，6 镜，3 条素材引用 | `examples/01_normal/`（`output.offline.json`、`output.real.json`） |
+| AC-01 正常生成 | offline `completed` 28s；real `completed` 30s，6 镜，4 条素材引用，规则 0 error | `examples/01_normal/`（`output.offline.json`、`output.real.json`） |
 | AC-02 缺关键信息 | `needs_input`，缺 `audience`，无 `model_response` | `examples/02_missing_input/` |
 | AC-03a 无结果 | offline：改写+回退共 5 次 0 结果 → `needs_input`；real：改写后命中通用素材 → `completed`（按 AC-03b 分支，已在 README 注明） | `examples/03_no_result/a_no_hit/`（offline + real） |
 | AC-03b 改写命中 | offline `completed` 28s，引用 P01 | `examples/03_no_result/b_rewrite_hit/` |
 | AC-04a 工具可恢复失败 | offline/real `completed`，`tool_errors` 含 `injected=true` 的 timeout | `examples/04_tool_failure/a_recoverable/` |
 | AC-04b 工具持续失败 | `failed`，`failure.code=tool_failure_unrecovered`，无编造脚本 | `examples/04_tool_failure/b_persistent/` |
-| AC-05 超时长修正 | offline 核心 38→28（≥2 次估算、改稿重估、引用 P01）；real 36→30（`completed`，为加分证据） | `examples/05_over_duration/` |
+| AC-05 超时长修正 | offline 核心 38→28（≥2 次估算、改稿重估、引用 P01）；real 31s（首稿即 within，压缩分支未触发，为加分证据） | `examples/05_over_duration/` |
 | AC-06 无法满足 | `failed`，`cannot_satisfy`；证据含目标区间 [27,33] vs kuaishou 上限 25、`PLAT-kuaishou-DUR-001` | `examples/06_unsatisfiable/` |
 | AC-07 步数上限 | `incomplete`，`step_limit`，保留 38s 草稿 | `examples/07_step_limit/` |
 | AC-08a 只改目标时长 | offline：同 38s 初稿 → 30s 目标压缩 28 / 60s 目标扩张 58；两条 trace 动作方向相反 | `examples/08_controlled_target/` |
@@ -49,8 +52,12 @@ LangGraph 全链路（正常、AC-05 38→28、AC-03a/b、AC-04a/b、AC-06、AC-
 ## 4. 关键数字（实际运行）
 
 - 离线固定策略：AC-05 首稿 38s（`too_long`，区间 [27,33]）→ 28s（`within`）；AC-08a 60s 目标 38→58s。
-- 真实模型：AC-01 27s/6 镜/3 素材引用；AC-05 36s（`too_long`）→ 30s（`within`）；
-  AC-08b no_hit 连续 9 次 0 结果后 `needs_input`；AC-04a 注入 timeout 后仍 `completed` 并记录 injected 错误。
+- 真实模型：AC-01 30s/6 镜/4 条素材引用；AC-03a real 37→32s；AC-05 real 首稿 31s（`within`，压缩分支未触发）；
+  AC-08b no_hit real 连续 6 次 0 结果后 `needs_input`；AC-04a real 注入 timeout 后仍 `completed` 并记录
+  injected 错误（另有一次 submit 参数非法由模型自行纠正，如实保留）。
+- 真实 trace 的 `model_response.response_id` 均非空（DeepSeek 响应 ID），可人工交叉核对；除 AC-05 real
+  有 1 步 `decision_note_source=missing` 外，其余真实步骤均为 `model`，缺失步骤由编排层
+  `decision_summary`（source=orchestrator）补足。
 - 全部 `completed` 输出均满足：逐镜时长与公式复算一致、总时长等于逐镜和、引用原文逐字可回溯、
   最终规则检查 0 error。
 
@@ -64,10 +71,15 @@ LangGraph 全链路（正常、AC-05 38→28、AC-03a/b、AC-04a/b、AC-06、AC-
 | `finish/ask_user` 参数非法仍提前 finalize | 评审 + 单测 | 工具节点校验失败清空 terminal 回循环；补测试 |
 | `check_rules` 业务违规（`ok:false`）被误记为工具失败 | 离线 examples 审查 | 区分"工具执行失败"与"业务未通过"；补测试 |
 | 示例 `command.*.txt` 多写一个 `run`，19 个中 18 个不能直接复跑 | 需求方复跑 | 重新生成 19 个命令文件；新增 `tests/test_command_files.py` 用真实 argparse 解析拦截 |
+| 工具预算预检跳过含 `finish` 的批时未清 terminal，存在误判 `completed` 风险 | 独立评审 | 跳过批清空 terminal 并强制走预算收尾；补"跳过批含 finish → incomplete"测试 |
+| LLMError 退出码文档（内部错误/1）与实现（failed/5）不一致 | 独立评审 | 统一为 LLMError → failed/5；配置/数据集/未捕获异常 → 1；01/02/README/测试同步 |
+| 证据门禁只校验首尾事件、离线 command 未全量复跑；真实 trace 无 API 侧标识 | 独立评审 | 证据测试复跑全部离线 command 并逐项比对；`model_response` 增加 `response_id`；真实性由人工复跑记录 |
+| trace 字段缺口：`input_validation` 未写空字段、内部错误 `run_end` 缺 `exit_code`、异常 finalize 缺字段 | 独立评审 | 已补齐并补测试 |
+| §5.3 与 §8.4 对"末步 no_action + 触顶"表述矛盾 | 独立评审 | 统一为"编排层强制收尾才 incomplete；主动结束且复算通过可 completed"；补末步 no_action 测试 |
 
 ## 6. 限制与未覆盖
 
-- 真实模型输出非确定；AC-05 real 数值（36→30）与离线参考（38→28）不同属正常，未改写证据。
+- 真实模型输出非确定；AC-05 real 本次首稿 31s 即 `within`（压缩分支未触发），与离线参考 38→28 不同属正常，未改写证据。
 - AC-08a 的真实模型对照未跑（非必需证据，仅作加分项），仅有离线确定性对照；如需补齐需重跑并更新本文件。
 - AC-03a 真实模型改写为可命中查询（AC-03b 分支），持续无结果的真实证据由 AC-08b no_hit 承担。
 - 事实检查不能识别语义级张冠李戴；素材/品牌/平台规则均为合成数据；时长公式为近似值。

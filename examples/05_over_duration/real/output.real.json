@@ -1,5 +1,5 @@
 {
-  "run_id": "20261028T224813+0800-7f7697",
+  "run_id": "20261028T231329+0800-7f7697",
   "mode": "real",
   "status": "completed",
   "input": {
@@ -11,7 +11,7 @@
     "extra_notes": null
   },
   "script": {
-    "title": "字幕功能上线｜剪辑新手跟一遍就会",
+    "title": "字幕功能上线｜新手三步上手",
     "platform": "douyin",
     "style": "轻快教程",
     "target_duration_s": 30,
@@ -22,12 +22,12 @@
     "shots": [
       {
         "index": 1,
-        "visual": "手机竖屏录屏：时间线上字幕轨空着，手指悬在屏幕上停顿",
-        "narration": "剪辑新手做字幕，一句句手敲到心累？",
-        "caption": "字幕还得一句句手敲？",
+        "visual": "剪辑界面快速推近，时间线字幕轨道亮起",
+        "narration": "剪完片子发现没字幕？新手也能三步搞定。",
+        "caption": "剪完没字幕？三步搞定",
         "duration_s": 5,
         "duration_breakdown": {
-          "narration_chars": 17,
+          "narration_chars": 19,
           "caption_chars": 10,
           "narration_s": 5,
           "caption_s": 2
@@ -36,15 +36,29 @@
       },
       {
         "index": 2,
-        "visual": "字幕轨上出现一行字幕条，光标沿轨道滑动",
-        "narration": "现在支持字幕，新手顺着流程就能加上。",
-        "caption": "支持字幕",
+        "visual": "手指点击时间线，画面切成整齐片段",
+        "narration": "第一步，先把画面剪顺，再来处理字幕。",
+        "caption": "第一步：画面先剪顺",
         "duration_s": 5,
         "duration_breakdown": {
           "narration_chars": 18,
-          "caption_chars": 4,
+          "caption_chars": 9,
           "narration_s": 5,
-          "caption_s": 1
+          "caption_s": 2
+        },
+        "citations": []
+      },
+      {
+        "index": 3,
+        "visual": "字幕面板展开，字幕块落到时间线上",
+        "narration": "第二步，打开字幕功能，这款工具支持字幕。",
+        "caption": "第二步：打开字幕功能",
+        "duration_s": 5,
+        "duration_breakdown": {
+          "narration_chars": 20,
+          "caption_chars": 10,
+          "narration_s": 5,
+          "caption_s": 2
         },
         "citations": [
           {
@@ -55,16 +69,16 @@
         ]
       },
       {
-        "index": 3,
-        "visual": "横向滑动浏览内置剪辑模板缩略图，选中其中一个",
-        "narration": "先挑一个内置剪辑模板，把节奏定下来。",
-        "caption": "内置剪辑模板库",
+        "index": 4,
+        "visual": "模板列表滑动，画面套上模板排版",
+        "narration": "第三步，挑个内置剪辑模板，排版更省心。",
+        "caption": "第三步：用内置剪辑模板",
         "duration_s": 5,
         "duration_breakdown": {
-          "narration_chars": 18,
-          "caption_chars": 7,
+          "narration_chars": 19,
+          "caption_chars": 11,
           "narration_s": 5,
-          "caption_s": 2
+          "caption_s": 3
         },
         "citations": [
           {
@@ -75,14 +89,14 @@
         ]
       },
       {
-        "index": 4,
-        "visual": "打开背景音乐列表，指尖点选一首配乐，音波条跳动",
-        "narration": "再打开内置背景音乐库，选首配乐垫上。",
-        "caption": "内置背景音乐库",
+        "index": 5,
+        "visual": "音量条随节奏跳动，音乐波形铺满轨道",
+        "narration": "最后配上内置背景音乐，节奏一下就起来了。",
+        "caption": "配上内置背景音乐",
         "duration_s": 5,
         "duration_breakdown": {
-          "narration_chars": 18,
-          "caption_chars": 7,
+          "narration_chars": 20,
+          "caption_chars": 8,
           "narration_s": 5,
           "caption_s": 2
         },
@@ -95,48 +109,28 @@
         ]
       },
       {
-        "index": 5,
-        "visual": "导出面板弹出，清晰度一栏显示 1080P",
-        "narration": "做好直接导出，支持导出 1080P 视频。",
-        "caption": "支持导出 1080P 视频",
-        "duration_s": 5,
-        "duration_breakdown": {
-          "narration_chars": 19,
-          "caption_chars": 11,
-          "narration_s": 5,
-          "caption_s": 3
-        },
-        "citations": [
-          {
-            "material_id": "P08",
-            "fact_id": "P08-F1",
-            "quote": "支持导出 1080P 视频"
-          }
-        ]
-      },
-      {
         "index": 6,
-        "visual": "成片画面回放，字幕与画面同步，收尾定格",
-        "narration": "整套流程走一遍，新手跟着练，收藏起来。",
-        "caption": "新手跟一遍就会",
-        "duration_s": 5,
+        "visual": "成片画面定格，字幕与画面同步跳动",
+        "narration": "跟着做一遍，剪片不再卡在字幕上，关注我看下集。",
+        "caption": "关注我，下集见",
+        "duration_s": 6,
         "duration_breakdown": {
-          "narration_chars": 19,
+          "narration_chars": 23,
           "caption_chars": 7,
-          "narration_s": 5,
+          "narration_s": 6,
           "caption_s": 2
         },
         "citations": []
       }
     ],
-    "estimated_total_duration_s": 30,
+    "estimated_total_duration_s": 31,
     "citations": [
       {
         "material_id": "P01",
         "fact_id": "P01-F1",
         "quote": "支持字幕",
         "shot_indexes": [
-          2
+          3
         ]
       },
       {
@@ -144,7 +138,7 @@
         "fact_id": "P06-F1",
         "quote": "内置剪辑模板库",
         "shot_indexes": [
-          3
+          4
         ]
       },
       {
@@ -152,23 +146,15 @@
         "fact_id": "P02-F1",
         "quote": "内置背景音乐库",
         "shot_indexes": [
-          4
-        ]
-      },
-      {
-        "material_id": "P08",
-        "fact_id": "P08-F1",
-        "quote": "支持导出 1080P 视频",
-        "shot_indexes": [
           5
         ]
       }
     ],
     "risks": [
       {
-        "category": "tool",
+        "category": "trace",
         "severity": "warning",
-        "message": "工具失败历史：submit_script:invalid_arguments ×1"
+        "message": "1 步模型未提供可见 decision_note；trace 中的 decision_summary 为编排层事实摘要（来源 orchestrator），不是模型输出"
       }
     ]
   },
@@ -178,7 +164,7 @@
       "per_shot": [
         {
           "index": 1,
-          "narration_chars": 17,
+          "narration_chars": 19,
           "caption_chars": 10,
           "narration_s": 5,
           "caption_s": 2,
@@ -187,29 +173,21 @@
         {
           "index": 2,
           "narration_chars": 18,
-          "caption_chars": 4,
+          "caption_chars": 9,
           "narration_s": 5,
-          "caption_s": 1,
+          "caption_s": 2,
           "duration_s": 5
         },
         {
           "index": 3,
-          "narration_chars": 18,
-          "caption_chars": 7,
+          "narration_chars": 20,
+          "caption_chars": 10,
           "narration_s": 5,
           "caption_s": 2,
           "duration_s": 5
         },
         {
           "index": 4,
-          "narration_chars": 18,
-          "caption_chars": 7,
-          "narration_s": 5,
-          "caption_s": 2,
-          "duration_s": 5
-        },
-        {
-          "index": 5,
           "narration_chars": 19,
           "caption_chars": 11,
           "narration_s": 5,
@@ -217,15 +195,23 @@
           "duration_s": 5
         },
         {
-          "index": 6,
-          "narration_chars": 19,
-          "caption_chars": 7,
+          "index": 5,
+          "narration_chars": 20,
+          "caption_chars": 8,
           "narration_s": 5,
           "caption_s": 2,
           "duration_s": 5
+        },
+        {
+          "index": 6,
+          "narration_chars": 23,
+          "caption_chars": 7,
+          "narration_s": 6,
+          "caption_s": 2,
+          "duration_s": 6
         }
       ],
-      "total_duration_s": 30,
+      "total_duration_s": 31,
       "target_duration_s": 30,
       "window": {
         "min_s": 27,
@@ -257,32 +243,22 @@
   },
   "needs_input": null,
   "failure": null,
-  "tool_errors": [
-    {
-      "tool": "submit_script",
-      "code": "invalid_arguments",
-      "message": "tool_call.arguments 不是合法 JSON：Unterminated string starting at",
-      "call_index": null,
-      "injected": false,
-      "step": 5,
-      "retryable": false
-    }
-  ],
+  "tool_errors": [],
   "skipped_tool_calls": [],
   "risks": [
     {
-      "category": "tool",
+      "category": "trace",
       "severity": "warning",
-      "message": "工具失败历史：submit_script:invalid_arguments ×1"
+      "message": "1 步模型未提供可见 decision_note；trace 中的 decision_summary 为编排层事实摘要（来源 orchestrator），不是模型输出"
     }
   ],
   "budget": {
     "max_steps": 8,
-    "steps_used": 7,
+    "steps_used": 4,
     "max_tool_calls": 16,
-    "tool_calls_used": 15
+    "tool_calls_used": 8
   },
   "data_digest": "98ec7deceba7",
   "trace_path": "examples\\05_over_duration\\real\\trace.real.jsonl",
-  "generated_at": "2026-10-28T22:48:13+08:00"
+  "generated_at": "2026-10-28T23:13:29+08:00"
 }

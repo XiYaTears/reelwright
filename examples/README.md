@@ -5,17 +5,17 @@
 
 ## 来源与限制
 
-- 离线证据只证明流程与硬约束，不证明真实模型决策质量；真实证据必须来自真实 DeepSeek 调用
-  （`run_start.model` 有值、非 mock）。
+- 离线证据只证明流程与硬约束，不证明真实模型决策质量；真实证据必须来自真实 DeepSeek 调用。
 - trace 两列来源：`decision_note` / `decision_note_source` 来自模型可见 content（可能
   `missing`）；`decision_summary` / `decision_summary_source=orchestrator` 是编排层按
   "上一步实际观察 + 本步实际工具名/参数"拼出的事实摘要，不是模型输出，03/04 已如实说明。
+- `model_response.response_id`：真实模式为 DeepSeek 响应 `id`，离线为合成 ID，供人工交叉核对；
+  真实性由需求方在 03/04 记录人工复跑，测试不假装能证明真实调用本身。
 - 正式真实决策证据：`AC-03a real`（多次 0 结果后改写，实际为 AC-03b 分支）、
   `AC-08b no_hit real`（连续 0 结果 → needs_input）、`AC-04a real`（注入 timeout → 重试后完成）。
   `AC-05 real`、`AC-08a real` 只作加分证据。
-- 测试结果：`pytest-offline.txt`（全量离线+证据结构测试）、`pytest-real.txt`
-  （真实冒烟，3 passed）。
-- 离线数字确定性（38→28 / 38→58）来自固定策略；真实数字不同属正常，各 README 如实记录。
+- 测试结果：`pytest-offline.txt`（全量离线 + 证据结构/复跑一致性）、`pytest-real.txt`（真实冒烟）。
+- 离线数字确定性（38→28 / 38→58）来自固定策略；真实模型非确定，各 README 记录实际值。
 
 | 目录 | 场景 | 已含模式 |
 | --- | --- | --- |

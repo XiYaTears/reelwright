@@ -1,1 +1,1 @@
-$env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m src.cli run --input examples/09_controlled_retrieval/no_hit/input.json --out examples/09_controlled_retrieval/no_hit/real/output.real.json --trace examples/09_controlled_retrieval/no_hit/real/trace.real.jsonl
+$env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m src.cli run --input examples/09_controlled_retrieval/no_hit/input.json --data-dir examples/09_controlled_retrieval/no_hit_data --out examples/09_controlled_retrieval/no_hit/real/output.real.json --trace examples/09_controlled_retrieval/no_hit/real/trace.real.jsonl

@@ -1,5 +1,5 @@
 {
-  "run_id": "20261028T224526+0800-fa2b69",
+  "run_id": "20261028T231109+0800-fa2b69",
   "mode": "offline",
   "status": "failed",
   "input": {
@@ -260,5 +260,5 @@
   },
   "data_digest": "98ec7deceba7",
   "trace_path": "examples\\06_unsatisfiable\\trace.offline.jsonl",
-  "generated_at": "2026-10-28T22:45:26+08:00"
+  "generated_at": "2026-10-28T23:11:09+08:00"
 }

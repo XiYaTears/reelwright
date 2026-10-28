@@ -76,6 +76,18 @@ def test_command_files_exist_and_are_parseable() -> None:
         assert Path(namespace.input).as_posix() == expected_input
         assert Path(namespace.out).as_posix() == expected_out
         assert Path(namespace.trace).as_posix() == expected_trace
+        command_text = path.read_text(encoding="utf-8")
+        rel = path.relative_to(EXAMPLES).as_posix()
+        if "04_tool_failure/a_recoverable/" in rel:
+            assert "--inject-failure search_materials=timeout@1" in command_text
+        elif "04_tool_failure/b_persistent/" in rel:
+            assert "--inject-failure search_materials=unavailable" in command_text
+        elif "07_step_limit/" in rel:
+            assert "--max-steps 3" in command_text
+        elif "09_controlled_retrieval/no_hit/" in rel:
+            assert "--data-dir examples/09_controlled_retrieval/no_hit_data" in command_text
+        else:
+            assert "--inject-failure" not in args and "--data-dir" not in args
 
 
 @pytest.mark.parametrize(

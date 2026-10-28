@@ -1,5 +1,5 @@
 {
-  "run_id": "20261028T224743+0800-7f7697",
+  "run_id": "20261028T231521+0800-7f7697",
   "mode": "real",
   "status": "completed",
   "input": {
@@ -11,7 +11,7 @@
     "extra_notes": null
   },
   "script": {
-    "title": "字幕功能上线｜剪辑新手轻快教程",
+    "title": "字幕功能上线｜剪辑新手30秒轻快教程",
     "platform": "douyin",
     "style": "轻快教程",
     "target_duration_s": 30,
@@ -22,14 +22,14 @@
     "shots": [
       {
         "index": 1,
-        "visual": "手机竖屏，剪辑界面特写，字幕按钮处弹出「字幕功能上线」贴纸动画",
-        "narration": "剪辑新手注意啦，字幕功能上线了。",
+        "visual": "画面：剪辑新手常用时间轴特写，光标停在画面上，弹出“上线啦”字样",
+        "narration": "剪辑新手看过来，字幕功能已经上线啦。",
         "caption": "字幕功能上线",
-        "duration_s": 4,
+        "duration_s": 5,
         "duration_breakdown": {
-          "narration_chars": 16,
+          "narration_chars": 18,
           "caption_chars": 6,
-          "narration_s": 4,
+          "narration_s": 5,
           "caption_s": 2
         },
         "citations": [
@@ -42,12 +42,12 @@
       },
       {
         "index": 2,
-        "visual": "手指点进字幕入口，画面出现字幕条示意，节奏轻快打点",
-        "narration": "现在剪辑里直接支持字幕，加字幕更顺手。",
+        "visual": "画面：界面字幕入口被高亮圈出，手指点击",
+        "narration": "这款工具支持字幕，剪辑界面就能找到。",
         "caption": "支持字幕",
         "duration_s": 5,
         "duration_breakdown": {
-          "narration_chars": 19,
+          "narration_chars": 18,
           "caption_chars": 4,
           "narration_s": 5,
           "caption_s": 1
@@ -62,75 +62,75 @@
       },
       {
         "index": 3,
-        "visual": "切到模板库列表滑动，缩略图快速掠过",
-        "narration": "还有内置剪辑模板库，套模板再放字幕。",
-        "caption": "内置剪辑模板库",
+        "visual": "画面：手机静音播放视频，字幕条清晰显示一句话",
+        "narration": "加字幕最直接的好处，观众静音也能看懂。",
+        "caption": "静音也能看懂",
         "duration_s": 5,
         "duration_breakdown": {
-          "narration_chars": 18,
-          "caption_chars": 7,
+          "narration_chars": 19,
+          "caption_chars": 6,
           "narration_s": 5,
           "caption_s": 2
         },
         "citations": [
           {
-            "material_id": "P06",
-            "fact_id": "P06-F1",
-            "quote": "内置剪辑模板库"
+            "material_id": "P01",
+            "fact_id": "P01-F1",
+            "quote": "支持字幕"
           }
         ]
       },
       {
         "index": 4,
-        "visual": "背景音乐库界面，试听几条音轨，音量波形跳动",
-        "narration": "配乐也不用纠结，内置背景音乐库直接选。",
-        "caption": "内置背景音乐库",
+        "visual": "画面：字幕放在画面下方安全区，避开人物脸部",
+        "narration": "字幕放画面下方，别压住人物脸部就行。",
+        "caption": "字幕放下方安全区",
         "duration_s": 5,
         "duration_breakdown": {
-          "narration_chars": 19,
-          "caption_chars": 7,
+          "narration_chars": 18,
+          "caption_chars": 8,
           "narration_s": 5,
           "caption_s": 2
         },
         "citations": [
           {
-            "material_id": "P02",
-            "fact_id": "P02-F1",
-            "quote": "内置背景音乐库"
+            "material_id": "P01",
+            "fact_id": "P01-F1",
+            "quote": "支持字幕"
           }
         ]
       },
       {
         "index": 5,
-        "visual": "导出设置面板特写，1080P 选项被勾选，进度条走完",
-        "narration": "做好后支持导出 1080P 视频，成片直接发。",
-        "caption": "支持导出 1080P",
-        "duration_s": 6,
+        "visual": "画面：时间轴上字幕条与旁白轨道逐句对齐，逐句核对",
+        "narration": "记得检查：字幕和旁白要一句一句对得上。",
+        "caption": "字幕与旁白逐句对齐",
+        "duration_s": 5,
         "duration_breakdown": {
-          "narration_chars": 21,
+          "narration_chars": 19,
           "caption_chars": 9,
-          "narration_s": 6,
+          "narration_s": 5,
           "caption_s": 2
         },
         "citations": [
           {
-            "material_id": "P08",
-            "fact_id": "P08-F1",
-            "quote": "支持导出 1080P 视频"
+            "material_id": "P01",
+            "fact_id": "P01-F1",
+            "quote": "支持字幕"
           }
         ]
       },
       {
         "index": 6,
-        "visual": "成片竖屏播放，字幕与画面同框，结尾出现关注引导",
-        "narration": "新手也能照着做，先把字幕功能试起来。",
-        "caption": "新手也照着做",
+        "visual": "画面：成片播放，字幕随画面出现，点赞关注动效收尾",
+        "narration": "看完就去试试，给你的视频加上字幕吧。",
+        "caption": "动手试试吧",
         "duration_s": 5,
         "duration_breakdown": {
           "narration_chars": 18,
-          "caption_chars": 6,
+          "caption_chars": 5,
           "narration_s": 5,
-          "caption_s": 2
+          "caption_s": 1
         },
         "citations": [
           {
@@ -150,31 +150,10 @@
         "shot_indexes": [
           1,
           2,
+          3,
+          4,
+          5,
           6
-        ]
-      },
-      {
-        "material_id": "P06",
-        "fact_id": "P06-F1",
-        "quote": "内置剪辑模板库",
-        "shot_indexes": [
-          3
-        ]
-      },
-      {
-        "material_id": "P02",
-        "fact_id": "P02-F1",
-        "quote": "内置背景音乐库",
-        "shot_indexes": [
-          4
-        ]
-      },
-      {
-        "material_id": "P08",
-        "fact_id": "P08-F1",
-        "quote": "支持导出 1080P 视频",
-        "shot_indexes": [
-          5
         ]
       }
     ],
@@ -182,7 +161,7 @@
       {
         "category": "tool",
         "severity": "warning",
-        "message": "工具失败历史：search_materials:timeout ×1"
+        "message": "工具失败历史：search_materials:timeout ×1；submit_script:invalid_arguments ×1"
       }
     ]
   },
@@ -192,15 +171,15 @@
       "per_shot": [
         {
           "index": 1,
-          "narration_chars": 16,
+          "narration_chars": 18,
           "caption_chars": 6,
-          "narration_s": 4,
+          "narration_s": 5,
           "caption_s": 2,
-          "duration_s": 4
+          "duration_s": 5
         },
         {
           "index": 2,
-          "narration_chars": 19,
+          "narration_chars": 18,
           "caption_chars": 4,
           "narration_s": 5,
           "caption_s": 1,
@@ -208,34 +187,34 @@
         },
         {
           "index": 3,
-          "narration_chars": 18,
-          "caption_chars": 7,
+          "narration_chars": 19,
+          "caption_chars": 6,
           "narration_s": 5,
           "caption_s": 2,
           "duration_s": 5
         },
         {
           "index": 4,
-          "narration_chars": 19,
-          "caption_chars": 7,
+          "narration_chars": 18,
+          "caption_chars": 8,
           "narration_s": 5,
           "caption_s": 2,
           "duration_s": 5
         },
         {
           "index": 5,
-          "narration_chars": 21,
+          "narration_chars": 19,
           "caption_chars": 9,
-          "narration_s": 6,
+          "narration_s": 5,
           "caption_s": 2,
-          "duration_s": 6
+          "duration_s": 5
         },
         {
           "index": 6,
           "narration_chars": 18,
-          "caption_chars": 6,
+          "caption_chars": 5,
           "narration_s": 5,
-          "caption_s": 2,
+          "caption_s": 1,
           "duration_s": 5
         }
       ],
@@ -280,6 +259,15 @@
       "injected": true,
       "step": 1,
       "retryable": true
+    },
+    {
+      "tool": "submit_script",
+      "code": "invalid_arguments",
+      "message": "tool_call.arguments 不是合法 JSON：Extra data",
+      "call_index": null,
+      "injected": false,
+      "step": 5,
+      "retryable": false
     }
   ],
   "skipped_tool_calls": [],
@@ -287,16 +275,16 @@
     {
       "category": "tool",
       "severity": "warning",
-      "message": "工具失败历史：search_materials:timeout ×1"
+      "message": "工具失败历史：search_materials:timeout ×1；submit_script:invalid_arguments ×1"
     }
   ],
   "budget": {
     "max_steps": 8,
-    "steps_used": 6,
+    "steps_used": 8,
     "max_tool_calls": 16,
-    "tool_calls_used": 11
+    "tool_calls_used": 12
   },
   "data_digest": "98ec7deceba7",
   "trace_path": "examples\\04_tool_failure\\a_recoverable\\real\\trace.real.jsonl",
-  "generated_at": "2026-10-28T22:47:43+08:00"
+  "generated_at": "2026-10-28T23:15:21+08:00"
 }

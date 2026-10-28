@@ -1,5 +1,5 @@
 {
-  "run_id": "20261028T224714+0800-9aed12",
+  "run_id": "20261028T231221+0800-9aed12",
   "mode": "real",
   "status": "completed",
   "input": {
@@ -11,7 +11,7 @@
     "extra_notes": null
   },
   "script": {
-    "title": "火星旅拍攻略｜剪辑新手三步开剪",
+    "title": "火星旅拍攻略｜新手三步出片",
     "platform": "douyin",
     "style": "轻快教程",
     "target_duration_s": 30,
@@ -22,9 +22,9 @@
     "shots": [
       {
         "index": 1,
-        "visual": "火星红沙丘航拍，宇航服身影走入画面，字幕从下方弹入",
-        "narration": "火星旅拍素材拍回来了？新手三步开剪。",
-        "caption": "素材到手，三步开剪",
+        "visual": "红色沙丘旅拍素材快切，标题字从画面中央弹出",
+        "narration": "火星旅拍素材别堆，新手三步剪出节奏。",
+        "caption": "新手三步剪出旅拍感",
         "duration_s": 5,
         "duration_breakdown": {
           "narration_chars": 18,
@@ -36,9 +36,9 @@
       },
       {
         "index": 2,
-        "visual": "剪辑界面打开模板列表，手指点选旅拍节奏模板，时间线自动铺满片段",
-        "narration": "第一步，模板库里挑个旅拍模板，先定结构。",
-        "caption": "第一步：模板定结构",
+        "visual": "打开剪辑模板库界面，浏览模板列表并应用",
+        "narration": "第一步，打开内置剪辑模板库，套旅拍节奏。",
+        "caption": "第一步：套剪辑模板",
         "duration_s": 5,
         "duration_breakdown": {
           "narration_chars": 20,
@@ -56,34 +56,34 @@
       },
       {
         "index": 3,
-        "visual": "背景音乐库界面滑动，选中轻快曲目，画面出现鼓点卡点标记",
-        "narration": "第二步，音乐库选首轻快曲子，卡住鼓点。",
-        "caption": "第二步：音乐管节奏",
+        "visual": "时间线中依次替换远景、行走、日落镜头，画面跟着卡点切换",
+        "narration": "远景、行走、日落依次替换，跟着卡点走。",
+        "caption": "素材跟着卡点走",
         "duration_s": 5,
         "duration_breakdown": {
           "narration_chars": 19,
-          "caption_chars": 9,
+          "caption_chars": 7,
           "narration_s": 5,
           "caption_s": 2
         },
         "citations": [
           {
-            "material_id": "P02",
-            "fact_id": "P02-F1",
-            "quote": "内置背景音乐库"
+            "material_id": "P06",
+            "fact_id": "P06-F1",
+            "quote": "内置剪辑模板库"
           }
         ]
       },
       {
         "index": 4,
-        "visual": "火星画面下方出现字幕条，输入火星坐标文字，字幕随镜头切换",
-        "narration": "第三步，给画面加字幕，写明火星坐标。",
-        "caption": "第三步：字幕补信息",
-        "duration_s": 5,
+        "visual": "字幕编辑界面，输入地点和动作短句",
+        "narration": "第二步，用字幕点明地点和动作，越短越清楚。",
+        "caption": "第二步：短句字幕",
+        "duration_s": 6,
         "duration_breakdown": {
-          "narration_chars": 18,
-          "caption_chars": 9,
-          "narration_s": 5,
+          "narration_chars": 21,
+          "caption_chars": 8,
+          "narration_s": 6,
           "caption_s": 2
         },
         "citations": [
@@ -96,56 +96,40 @@
       },
       {
         "index": 5,
-        "visual": "导出设置页选择 1080P，进度条走完，成片在手机竖屏播放",
-        "narration": "最后按 1080P 导出，竖屏发抖音。",
-        "caption": "按 1080P 导出成片",
-        "duration_s": 5,
+        "visual": "背景音乐库试听轻快曲目，波形随节奏跳动",
+        "narration": "第三步，内置背景音乐库挑轻快配乐，别盖过环境声。",
+        "caption": "第三步：轻快配乐",
+        "duration_s": 6,
         "duration_breakdown": {
-          "narration_chars": 17,
-          "caption_chars": 10,
-          "narration_s": 5,
+          "narration_chars": 24,
+          "caption_chars": 8,
+          "narration_s": 6,
           "caption_s": 2
         },
         "citations": [
           {
-            "material_id": "P08",
-            "fact_id": "P08-F1",
-            "quote": "支持导出 1080P 视频"
+            "material_id": "P02",
+            "fact_id": "P02-F1",
+            "quote": "内置背景音乐库"
           }
         ]
       },
       {
         "index": 6,
-        "visual": "三段画面快切回放：模板时间线、音乐波形、字幕条，最后定格火星旅拍成片",
-        "narration": "模板定结构，音乐管节奏，字幕补信息。",
-        "caption": "三步收工，你也试试",
+        "visual": "成片三连：远景环境、近景细节、最后定格",
+        "narration": "远景交代环境，近景补细节，最后定格收尾。",
+        "caption": "远景＋近景＋定格收尾",
         "duration_s": 5,
         "duration_breakdown": {
-          "narration_chars": 18,
-          "caption_chars": 9,
+          "narration_chars": 20,
+          "caption_chars": 10,
           "narration_s": 5,
           "caption_s": 2
         },
-        "citations": [
-          {
-            "material_id": "P06",
-            "fact_id": "P06-F1",
-            "quote": "内置剪辑模板库"
-          },
-          {
-            "material_id": "P02",
-            "fact_id": "P02-F1",
-            "quote": "内置背景音乐库"
-          },
-          {
-            "material_id": "P01",
-            "fact_id": "P01-F1",
-            "quote": "支持字幕"
-          }
-        ]
+        "citations": []
       }
     ],
-    "estimated_total_duration_s": 30,
+    "estimated_total_duration_s": 32,
     "citations": [
       {
         "material_id": "P06",
@@ -153,16 +137,7 @@
         "quote": "内置剪辑模板库",
         "shot_indexes": [
           2,
-          6
-        ]
-      },
-      {
-        "material_id": "P02",
-        "fact_id": "P02-F1",
-        "quote": "内置背景音乐库",
-        "shot_indexes": [
-          3,
-          6
+          3
         ]
       },
       {
@@ -170,14 +145,13 @@
         "fact_id": "P01-F1",
         "quote": "支持字幕",
         "shot_indexes": [
-          4,
-          6
+          4
         ]
       },
       {
-        "material_id": "P08",
-        "fact_id": "P08-F1",
-        "quote": "支持导出 1080P 视频",
+        "material_id": "P02",
+        "fact_id": "P02-F1",
+        "quote": "内置背景音乐库",
         "shot_indexes": [
           5
         ]
@@ -208,37 +182,37 @@
         {
           "index": 3,
           "narration_chars": 19,
-          "caption_chars": 9,
+          "caption_chars": 7,
           "narration_s": 5,
           "caption_s": 2,
           "duration_s": 5
         },
         {
           "index": 4,
-          "narration_chars": 18,
-          "caption_chars": 9,
-          "narration_s": 5,
+          "narration_chars": 21,
+          "caption_chars": 8,
+          "narration_s": 6,
           "caption_s": 2,
-          "duration_s": 5
+          "duration_s": 6
         },
         {
           "index": 5,
-          "narration_chars": 17,
-          "caption_chars": 10,
-          "narration_s": 5,
+          "narration_chars": 24,
+          "caption_chars": 8,
+          "narration_s": 6,
           "caption_s": 2,
-          "duration_s": 5
+          "duration_s": 6
         },
         {
           "index": 6,
-          "narration_chars": 18,
-          "caption_chars": 9,
+          "narration_chars": 20,
+          "caption_chars": 10,
           "narration_s": 5,
           "caption_s": 2,
           "duration_s": 5
         }
       ],
-      "total_duration_s": 30,
+      "total_duration_s": 32,
       "target_duration_s": 30,
       "window": {
         "min_s": 27,
@@ -277,9 +251,9 @@
     "max_steps": 8,
     "steps_used": 8,
     "max_tool_calls": 16,
-    "tool_calls_used": 15
+    "tool_calls_used": 16
   },
   "data_digest": "98ec7deceba7",
   "trace_path": "examples\\03_no_result\\a_no_hit\\real\\trace.real.jsonl",
-  "generated_at": "2026-10-28T22:47:14+08:00"
+  "generated_at": "2026-10-28T23:12:21+08:00"
 }

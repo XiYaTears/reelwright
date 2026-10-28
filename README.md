@@ -51,7 +51,7 @@ $env:PYTHONUTF8=1
 可选参数：`--out` / `--trace`、`--max-steps`（1–20，默认 8）、`--inject-failure TOOL=CODE[@N]`
 （CODE：`timeout|unavailable|invalid_response`）、`--data-dir`（受控实验）、`--env-file`。
 
-退出码：`0 completed`、`3 needs_input`、`4 incomplete`、`5 failed`、`1` 内部错误、`2` CLI 用法/JSON 错误。
+退出码：`0 completed`、`3 needs_input`、`4 incomplete`、`5 failed`（含 LLMError 模型调用失败，仍有 output/trace）、`1` 内部错误（配置缺失/数据集不可用/未捕获异常）、`2` CLI 用法/JSON 错误。
 
 ## 输出
 
@@ -71,7 +71,7 @@ $env:PYTHONUTF8=1
 .\.venv\Scripts\python.exe -m pytest -q -m real    # 真实模型冒烟（需 .env.local）
 ```
 
-当前结果：离线 `198 passed, 3 deselected`；真实冒烟 `3 passed`。结果文件见
+当前结果：离线 `215 passed, 3 deselected`；真实冒烟 `3 passed`。结果文件见
 `examples/pytest-offline.txt`、`examples/pytest-real.txt`。
 
 ## 验收证据（examples/）
