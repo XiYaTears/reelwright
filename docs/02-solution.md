@@ -555,7 +555,7 @@ def route_after_tools(state) -> Literal["agent", "finalize"]:
 | `ask_user` | `{question(1–300), missing_fields[0–10], reason(可选)}` | 请求补充信息；整批执行完后结束为 `needs_input` |
 | `finish` | `{outcome: "completed_intent"\|"cannot_satisfy", message(可选, ≤200)}` | 模型声明收尾意图；**最终状态由 finalize 复算决定**，模型声明不直接生效 |
 
-约束：`finish` 与 `ask_user` 同批出现视为无效动作组合 → `failed`（`invalid_action_combination`）；控制动作的 schema 由注册表同样校验，失败回填 `invalid_arguments` 并继续循环。
+约束：`finish` 与 `ask_user` 同批出现视为无效动作组合 → `failed`（`invalid_action_combination`）；控制动作的 schema 由注册表同样校验，失败回填 `invalid_arguments` 并继续循环。**控制动作校验失败时只回填错误并清除本批 `terminal`**，回到 agent 继续纠正；只有控制动作执行成功（或 finish+ask_user 同批的 invalid 组合）才进入 finalize，避免"参数打错就直接失败"。
 
 ## 7. 时长估算公式（确定性，写死）
 

@@ -430,8 +430,8 @@ class MockClient:
         self._terminal_emitted = True
         args = {
             "question": "素材库没有覆盖该主题，请补充产品功能、卖点或可引用的素材信息。",
-            "missing_fields": ["topic"],
-            "reason": f"已尝试 {len(self._queries_sent)} 次检索均无结果",
+            "missing_fields": ["materials"],
+            "reason": "素材库未覆盖该主题",
         }
         return self._respond("请求补充素材信息", [("ask_user", args)])
 

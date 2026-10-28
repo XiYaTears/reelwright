@@ -88,7 +88,7 @@ def _parse_arguments(raw: str) -> tuple[dict[str, Any], str | None]:
 
 
 def _summarize_observation(tool: str, observation: dict[str, Any]) -> dict[str, Any]:
-    if observation.get("ok") is False:
+    if isinstance(observation.get("error"), dict):
         error = observation.get("error") or {}
         return {"error": {"code": error.get("code"), "retryable": error.get("retryable")}}
     if tool == "search_materials":
@@ -127,7 +127,7 @@ def _summarize_observation(tool: str, observation: dict[str, Any]) -> dict[str, 
 
 
 def _decision_hint(tool: str, observation: dict[str, Any]) -> str:
-    if observation.get("ok") is False:
+    if isinstance(observation.get("error"), dict):
         return "tool_error:retry_or_escalate"
     if tool == "search_materials":
         return "no_hits:rewrite_or_ask_user" if observation.get("total_matched") == 0 else "materials_found:write_script"
@@ -305,6 +305,7 @@ def make_tool_node(
         rules_digest = state.get("rules_digest")
         pending_question = state.get("pending_question")
         finish_outcome = state.get("finish_outcome")
+        control_action_results: dict[str, bool] = {}
 
         for raw in raw_calls:
             if not isinstance(raw, dict):
@@ -316,6 +317,7 @@ def make_tool_node(
             started = time.perf_counter()
 
             def append_observation(observation: dict[str, Any], *, tool_name: str | None) -> None:
+                tool_failed = isinstance(observation.get("error"), dict)
                 new_messages.append(
                     {
                         "role": "tool",
@@ -328,14 +330,14 @@ def make_tool_node(
                     step=step,
                     tool=tool_name,
                     call_id=call_id,
-                    ok=observation.get("ok"),
+                    ok=not tool_failed,
                     duration_ms=round((time.perf_counter() - started) * 1000, 1),
                     injected=bool(observation.get("_injected")),
                     error=observation.get("error"),
                     observation=_summarize_observation(tool_name or "", observation),
                     decision_hint=_decision_hint(tool_name or "", observation),
                 )
-                if observation.get("ok") is False:
+                if tool_failed:
                     error = observation.get("error") or {}
                     tool_errors.append(
                         {
@@ -355,7 +357,7 @@ def make_tool_node(
                 observations.append(
                     {
                         "tool": tool_name or "unknown_tool",
-                        "ok": observation.get("ok"),
+                        "ok": not tool_failed,
                         "summary": _summarize_observation(tool_name or "", observation),
                     }
                 )
@@ -388,6 +390,7 @@ def make_tool_node(
                         estimate_digest = None
                         rules_digest = None
                 append_observation(observation, tool_name=name)
+                control_action_results[name] = bool(observation.get("ok"))
                 continue
 
             if name not in ("search_materials", "estimate_duration", "check_rules"):
@@ -425,6 +428,13 @@ def make_tool_node(
                 except ScriptValidationError:
                     rules_digest = None
 
+        # 控制动作校验失败不能提前收尾：清空 terminal，回到模型循环继续纠正。
+        terminal = state.get("terminal")
+        terminal_update = terminal
+        if terminal in (TERMINAL_FINISH, TERMINAL_ASK_USER):
+            if control_action_results.get(terminal) is False:
+                terminal_update = None
+
         return {
             "messages": new_messages,
             "tool_calls_used": used + len(raw_calls),
@@ -439,6 +449,7 @@ def make_tool_node(
             "pending_question": pending_question,
             "finish_outcome": finish_outcome,
             "last_observations": observations,
+            "terminal": terminal_update,
         }
 
     return tool_node

@@ -202,6 +202,7 @@ def test_ac03a_no_hit_asks_user(tmp_path: Path) -> None:
     assert output["status"] == "needs_input"
     assert output["script"] is None
     assert output["needs_input"]["missing_fields"]
+    assert "materials" in output["needs_input"]["missing_fields"]
     searches = [
         event
         for event in _trace_events(trace_path)
@@ -272,6 +273,7 @@ def test_ac06_unsatisfiable_duration_conflict(tmp_path: Path) -> None:
     assert output["status"] == "failed"
     assert int(result.exit_code) == 5
     assert output["failure"]["code"] == "cannot_satisfy"
+    assert output["tool_errors"] == []  # 规则违规是业务结果，不是工具执行失败
     rule_ids = {
         violation["rule_id"]
         for violation in output["checks"]["rules"]["violations"]
@@ -494,3 +496,75 @@ def test_run_id_and_budget_reported(tmp_path: Path) -> None:
     assert output["budget"]["max_steps"] == 5
     assert output["budget"]["max_tool_calls"] == 10
     assert output["budget"]["steps_used"] <= 5
+
+
+def test_invalid_control_action_returns_to_loop(tmp_path: Path) -> None:
+    """finish 参数非法 → 回填 invalid_arguments 并回循环，第二次合法 finish 可完成。"""
+    script = _make_script(28)
+    sequence = [
+        _response(
+            "提交并尝试完成",
+            ("submit_script", script),
+            ("finish", {"outcome": "bogus"}),
+        ),
+        _response(
+            "估算检查",
+            ("estimate_duration", _estimate_args(script)),
+            ("check_rules", script),
+        ),
+        _response("完成", ("finish", {"outcome": "completed_intent"})),
+    ]
+    factory = lambda dataset, requirements: FakeLLM(sequence)  # noqa: E731
+    result, _, trace_path = _run(_normal_input(), tmp_path=tmp_path, llm_factory=factory)
+    output = result.output or {}
+    assert output["status"] == "completed"
+    model_events = [
+        event for event in _trace_events(trace_path) if event["type"] == "model_response"
+    ]
+    assert len(model_events) == 3
+    finish_events = [
+        event
+        for event in _trace_events(trace_path)
+        if event["type"] == "tool_result" and event["tool"] == "finish"
+    ]
+    assert finish_events[0]["ok"] is False
+    assert finish_events[0]["error"]["code"] == "invalid_arguments"
+    assert finish_events[-1]["ok"] is True
+    assert any(
+        error["tool"] == "finish" and error["code"] == "invalid_arguments"
+        for error in output["tool_errors"]
+    )
+
+
+class _FailingAfterResponses:
+    model_name = "failing-after-two"
+
+    def __init__(self, responses: list[LLMResponse]) -> None:
+        self._responses = list(responses)
+
+    def chat(self, messages, tools):
+        if self._responses:
+            return self._responses.pop(0)
+        raise LLMError("网络错误：测试")
+
+
+def test_late_llm_error_reports_actual_steps(tmp_path: Path) -> None:
+    script = _make_script(28)
+    responses = [
+        _response("提交", ("submit_script", script)),
+        _response(
+            "检查",
+            ("estimate_duration", _estimate_args(script)),
+            ("check_rules", script),
+        ),
+    ]
+    factory = lambda dataset, requirements: _FailingAfterResponses(responses)  # noqa: E731
+    result, _, trace_path = _run(_normal_input(), tmp_path=tmp_path, llm_factory=factory)
+    output = result.output or {}
+    assert output["status"] == "failed"
+    assert output["failure"]["code"] == "llm_error"
+    run_end = next(
+        event for event in _trace_events(trace_path) if event["type"] == "run_end"
+    )
+    assert run_end["steps_used"] == 2
+    assert run_end["tool_calls_used"] == 3

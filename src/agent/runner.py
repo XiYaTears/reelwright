@@ -203,11 +203,12 @@ def run(
         trace.event("finalize", status=status, failure_code="llm_error")
         _write_json(out_path, output)
         exit_code = int(ExitCode.FAILED)
+        steps_used, tool_calls_used = _trace_progress(trace)
         trace.event(
             "run_end",
             status=status,
-            steps_used=0,
-            tool_calls_used=0,
+            steps_used=steps_used,
+            tool_calls_used=tool_calls_used,
             duration_ms=round((time.perf_counter() - started) * 1000, 1),
             exit_code=exit_code,
         )
@@ -229,11 +230,12 @@ def run(
         trace.event("finalize", status=status, failure_code="orchestration_error")
         _write_json(out_path, output)
         exit_code = int(ExitCode.FAILED)
+        steps_used, tool_calls_used = _trace_progress(trace)
         trace.event(
             "run_end",
             status=status,
-            steps_used=0,
-            tool_calls_used=0,
+            steps_used=steps_used,
+            tool_calls_used=tool_calls_used,
             duration_ms=round((time.perf_counter() - started) * 1000, 1),
             exit_code=exit_code,
         )
@@ -659,3 +661,16 @@ def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+
+
+def _trace_progress(trace: TraceWriter) -> tuple[int, int]:
+    """异常提前收尾时，从已落盘 trace 取实际步数与已执行工具调用数，避免虚报 0。"""
+    steps_used = 0
+    tool_calls_used = 0
+    for event in trace.events:
+        step = event.get("step")
+        if isinstance(step, int):
+            steps_used = max(steps_used, step)
+        if event.get("type") == "tool_result":
+            tool_calls_used += 1
+    return steps_used, tool_calls_used
