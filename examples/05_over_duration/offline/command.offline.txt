@@ -1,1 +1,1 @@
-$env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m src.cli run run --input examples\05_over_duration\offline\input.json --offline --out examples\05_over_duration\offline\output.offline.json --trace examples\05_over_duration\offline\trace.offline.jsonl
+$env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m src.cli run --input examples/05_over_duration/offline/input.json --offline --out examples/05_over_duration/offline/output.offline.json --trace examples/05_over_duration/offline/trace.offline.jsonl

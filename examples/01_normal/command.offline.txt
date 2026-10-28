@@ -1,1 +1,1 @@
-$env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m src.cli run run --input examples\01_normal\input.json --offline --out examples\01_normal\output.offline.json --trace examples\01_normal\trace.offline.jsonl
+$env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m src.cli run --input examples/01_normal/input.json --offline --out examples/01_normal/output.offline.json --trace examples/01_normal/trace.offline.jsonl

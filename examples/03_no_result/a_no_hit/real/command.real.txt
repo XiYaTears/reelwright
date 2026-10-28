@@ -1,1 +1,1 @@
-$env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m src.cli run run --input examples/03_no_result/a_no_hit/input.json --out examples\03_no_result\a_no_hit\real\output.real.json --trace examples\03_no_result\a_no_hit\real\trace.real.jsonl
+$env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m src.cli run --input examples/03_no_result/a_no_hit/input.json --out examples/03_no_result/a_no_hit/real/output.real.json --trace examples/03_no_result/a_no_hit/real/trace.real.jsonl

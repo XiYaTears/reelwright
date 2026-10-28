@@ -17,10 +17,10 @@
 
 ## 2. 测试结果（实际）
 
-| 命令 | 结果 | 耗时 |
-| --- | --- | --- |
-| `pytest -q` | `195 passed, 3 deselected` | 10.94s |
-| `pytest -q -m real` | `3 passed, 195 deselected` | 47.00s |
+| 命令 | 结果 |
+| --- | --- |
+| `pytest -q` | `198 passed, 3 deselected` |
+| `pytest -q -m real` | `3 passed, 198 deselected` |
 
 离线测试覆盖：dataset/script/duration/rules/materials/registry/deepseek/mock/state/trace/prompt/config、
 LangGraph 全链路（正常、AC-05 38→28、AC-03a/b、AC-04a/b、AC-06、AC-07、AC-08a/b、CITE-001 兜底、
@@ -63,11 +63,12 @@ LangGraph 全链路（正常、AC-05 38→28、AC-03a/b、AC-04a/b、AC-06、AC-
 | `ToolCall.raw_arguments` 使用处已提交、字段未提交（HEAD 不自洽） | 需求方独立审查 | 补提交 `fix: ToolCall 保留原始 arguments 字符串` |
 | `finish/ask_user` 参数非法仍提前 finalize | 评审 + 单测 | 工具节点校验失败清空 terminal 回循环；补测试 |
 | `check_rules` 业务违规（`ok:false`）被误记为工具失败 | 离线 examples 审查 | 区分"工具执行失败"与"业务未通过"；补测试 |
+| 示例 `command.*.txt` 多写一个 `run`，19 个中 18 个不能直接复跑 | 需求方复跑 | 重新生成 19 个命令文件；新增 `tests/test_command_files.py` 用真实 argparse 解析拦截 |
 
 ## 6. 限制与未覆盖
 
 - 真实模型输出非确定；AC-05 real 数值（36→30）与离线参考（38→28）不同属正常，未改写证据。
-- AC-08a 的真实模型对照未跑（时间/成本），仅有离线确定性对照；如需补齐需重跑并更新本文件。
+- AC-08a 的真实模型对照未跑（非必需证据，仅作加分项），仅有离线确定性对照；如需补齐需重跑并更新本文件。
 - AC-03a 真实模型改写为可命中查询（AC-03b 分支），持续无结果的真实证据由 AC-08b no_hit 承担。
 - 事实检查不能识别语义级张冠李戴；素材/品牌/平台规则均为合成数据；时长公式为近似值。
 - mock 只证明流程，不证明模型决策质量；离线 `decision_summary` 为编排层摘要，不是模型输出（见 04）。
