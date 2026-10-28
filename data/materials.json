@@ -1,0 +1,107 @@
+{
+  "version": "materials-v1",
+  "note": "全部为合成虚构数据，与任何真实产品、品牌、认证无关；素材中不包含效果数据。",
+  "materials": [
+    {
+      "material_id": "P01",
+      "product": "小影",
+      "title": "字幕功能说明",
+      "tags": ["字幕", "剪辑"],
+      "facts": [
+        { "fact_id": "P01-F1", "text": "支持字幕", "kind": "feature" }
+      ],
+      "source": "虚构产品资料 2026-01"
+    },
+    {
+      "material_id": "P02",
+      "product": "小影",
+      "title": "背景音乐库说明",
+      "tags": ["音乐", "配乐", "剪辑"],
+      "facts": [
+        { "fact_id": "P02-F1", "text": "内置背景音乐库", "kind": "feature" }
+      ],
+      "source": "虚构产品资料 2026-01"
+    },
+    {
+      "material_id": "P03",
+      "product": "小影",
+      "title": "画幅与竖屏说明",
+      "tags": ["竖屏", "画幅"],
+      "facts": [
+        { "fact_id": "P03-F1", "text": "支持竖屏 9:16 视频", "kind": "parameter" },
+        { "fact_id": "P03-F2", "text": "支持横屏 16:9 视频", "kind": "parameter" }
+      ],
+      "source": "虚构产品资料 2026-01"
+    },
+    {
+      "material_id": "P04",
+      "product": "小影",
+      "title": "提词器说明",
+      "tags": ["提词器", "口播"],
+      "facts": [
+        { "fact_id": "P04-F1", "text": "提供提词器功能", "kind": "feature" }
+      ],
+      "source": "虚构产品资料 2026-01"
+    },
+    {
+      "material_id": "P05",
+      "product": "小影",
+      "title": "美颜功能说明",
+      "tags": ["美颜", "人像"],
+      "facts": [
+        { "fact_id": "P05-F1", "text": "支持一键美颜", "kind": "feature" }
+      ],
+      "source": "虚构产品资料 2026-01"
+    },
+    {
+      "material_id": "P06",
+      "product": "小影",
+      "title": "剪辑模板库说明",
+      "tags": ["模板", "教程", "剪辑"],
+      "facts": [
+        { "fact_id": "P06-F1", "text": "内置剪辑模板库", "kind": "feature" }
+      ],
+      "source": "虚构产品资料 2026-01"
+    },
+    {
+      "material_id": "P07",
+      "product": "小影",
+      "title": "云草稿同步说明",
+      "tags": ["云草稿", "同步"],
+      "facts": [
+        { "fact_id": "P07-F1", "text": "支持云草稿同步", "kind": "feature" }
+      ],
+      "source": "虚构产品资料 2026-01"
+    },
+    {
+      "material_id": "P08",
+      "product": "小影",
+      "title": "导出规格说明",
+      "tags": ["导出", "画质"],
+      "facts": [
+        { "fact_id": "P08-F1", "text": "支持导出 1080P 视频", "kind": "parameter" }
+      ],
+      "source": "虚构产品资料 2026-01"
+    },
+    {
+      "material_id": "P09",
+      "product": "小影",
+      "title": "变速功能说明",
+      "tags": ["变速", "节奏"],
+      "facts": [
+        { "fact_id": "P09-F1", "text": "支持视频变速", "kind": "feature" }
+      ],
+      "source": "虚构产品资料 2026-01"
+    },
+    {
+      "material_id": "P10",
+      "product": "小影",
+      "title": "画中画功能说明",
+      "tags": ["画中画", "多轨"],
+      "facts": [
+        { "fact_id": "P10-F1", "text": "支持画中画", "kind": "feature" }
+      ],
+      "source": "虚构产品资料 2026-01"
+    }
+  ]
+}
