@@ -132,7 +132,7 @@
 | FR-6 | 引用校验 | 引用必须指向真实素材/事实，`quote` 必须与素材原文逐字匹配；数字/百分比/资质类表述必须有引用支撑 |
 | FR-7 | 动态决策 | 检索无结果时由模型决定改写查询或请求补充；时长/规则不过时改稿重查；工具失败时调整动作或明确失败；不得静默编造 |
 | FR-8 | 状态与预算 | 四状态明确；步数上限默认 8、工具调用上限由编排层强制（批前预检，超限批不执行并记录未执行调用）；**触顶且未 finish → `incomplete`；最后一个允许步 finish 且复算通过 → `completed`**；保留未完成证据 |
-| FR-9 | trace | 每步落盘：步骤序号、动作（工具名+参数）、观察摘要；模型每次发起工具调用前在可见 content 中给一句 ≤40 字本步意图，写入 trace `decision_note`（不是思维链）；不记录 `reasoning_content`/内部思维 |
+| FR-9 | trace | 每步落盘：步骤序号、动作（工具名+参数）、观察摘要；`decision_note` 记录模型可见 content 中的 ≤40 字说明并标来源 `model`/`missing`；另由编排层生成 `decision_summary`（只拼接上一步实际观察摘要与本步实际工具名/关键参数，标 `source=orchestrator`，不推断模型动机）；不记录 `reasoning_content`/内部思维 |
 | FR-10 | 失败注入 | CLI 或输入 JSON 指定工具、错误类型、第几次调用失败；同一输入可复现同一失败点 |
 | FR-11 | 双模式 | 真实模式读 `.env.local` 调 DeepSeek；离线模式用固定策略 mock 跑通全流程；二者同一 LLM 接口、同一图、同一工具 |
 | FR-12 | CLI | `python -m src.cli run ...` 非交互；输入 JSON 与参数两种方式；输出 JSON 到 stdout 并落盘；命令写入 README |

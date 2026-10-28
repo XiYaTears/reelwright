@@ -243,6 +243,7 @@ python -m src.cli run --topic "字幕功能上线" --audience "剪辑新手" --p
 | `failure` | `dict \| None` | 覆盖 | `{code, message, evidence}` |
 | `final_checks` | `dict \| None` | 覆盖 | 收尾复算的 `{estimate, rules, engine: "finalize"}` |
 | `tool_errors` | `list[dict]` | `operator.add` | 工具错误历史（含注入标记），进输出与风险 |
+| `last_observations` | `list[dict] \| None` | 覆盖 | 上一步每个工具调用的观察摘要（`tool/ok/summary`），供编排层生成 `decision_summary`，不用于业务判定 |
 
 trace 写入器、LLM 客户端、数据集、预算等通过闭包进节点，不进 state（避免序列化与 reducer 复杂度）。
 
@@ -337,7 +338,7 @@ def route_after_tools(state) -> Literal["agent", "finalize"]:
 ### 5.2 一个模型步的语义
 
 1. **agent 节点**：调 `LLMClient.chat(messages, tools=TOOL_SCHEMAS)`；把 assistant 消息（content + tool_calls）追加进 messages，`step += 1`；写 `model_response` trace。
-   - **可见决策说明**：prompt 要求模型每次发起 `tool_calls` 时，在 content 里用一句不超过 40 字的话说明"这一步做什么"；agent 节点提取为 `decision_note` 写入 trace（模型可见输出，不是思维链；缺失时记空串并标记 `missing_decision_note`，不伪造）。
+   - **可见决策说明**：prompt 要求模型每次发起 `tool_calls` 时，在 content 里用一句不超过 40 字的话说明"这一步做什么"；agent 节点提取为 `decision_note`（`missing` 时记空串）写入 trace（模型可见输出，不是思维链）。**同时** agent 节点按写死规则生成 `decision_summary`：首步固定"首步：检索主题相关素材"（或 `首步：<实际工具>`），之后只拼接"上一步实际观察摘要 + 本步实际工具名/关键参数"，来源标 `orchestrator`；不推断模型动机，也不依赖模型是否写 content。
    - 思考模式的 `reasoning_content` 直接丢弃，不落盘、不进 state。
    - 模型一次返回多个 `tool_calls` 时全部保留，`id` 原样使用（缺失则生成 `call-<step>-<n>`）。
    - `terminal` 判定：含 `finish` ⇒ `finish`；含 `ask_user` ⇒ `ask_user`；两者同批 ⇒ `invalid`；无 tool_calls ⇒ `no_action`。
@@ -674,10 +675,12 @@ within          = window_min ≤ total_s ≤ window_max
 | --- | --- | --- |
 | `run_start` | 图启动前 | `mode`、`input`（无密钥）、`budget`、`data_digest`、`formula_version`、`model`（真实模式）、`injection`（注入配置摘要） |
 | `input_validation` | 输入校验后 | `ok`、`missing_fields[]`、`invalid_fields[]`、`status`（needs_input 时） |
-| `model_response` | 每次模型调用后 | `step`、`decision_note`（模型在 content 中给的一句 ≤40 字本步意图，来自可见输出；缺失记 `""` 并置 `missing_decision_note: true`）、`tool_calls[{name, arguments}]`、`finish_reason`、`usage{prompt_tokens, completion_tokens}`、`content_excerpt`（≤200 字可见回复，供审计，非思维） |
+| `model_response` | 每次模型调用后 | `step`、`decision_note`（模型在 content 中的一句 ≤40 字本步说明，可能为 `""`）、`decision_note_source`（`model`/`missing`）、`decision_summary`（编排层生成的事实摘要：上一步实际观察摘要 + 本步实际工具名/关键参数；首步固定为"首步：检索主题相关素材"或"首步：<实际工具>"，不推断模型动机）、`decision_summary_source`（恒为 `orchestrator`）、`content_excerpt`（≤200 字可见回复，供审计，非思维）、`tool_calls[{name, arguments}]`、`finish_reason`、`usage{prompt_tokens, completion_tokens}` |
 | `tool_result` | 每个 tool_call 执行后 | `step`、`tool`、`call_id`、`ok`、`duration_ms`、`injected`、`error{code,message,retryable}`、`observation`（结构化摘要，如 `{"total_matched":1,"material_ids":["P01"]}`、`{"total_duration_s":38,"within":false,"window":[27,33]}`、`{"errors":2,"rule_ids":["CITE-001"],"shot_indexes":[2]}`）、`decision_hint`（机械摘要，如 `no_hits:rewrite_or_ask_user`，由观察结果规则化生成，不是模型思维） |
 | `finalize` | 收尾节点 | `step`、`status`、`failure_code`、`estimate`（摘要）、`rules`（统计+违规 ID）、`mismatch`、`budget` |
 | `run_end` | 输出组装后 | `status`、`steps_used`、`tool_calls_used`、`duration_ms`、`exit_code` |
+
+**`decision_summary` 来源声明**：它是编排层按写死规则拼装的事实摘要（上一步实际观察摘要 + 本步实际工具名/关键参数），**不是模型输出、不推断模型动机**；`decision_note` 才是模型可见 content。`docs/03`、`docs/04` 与 `examples` README 必须如实区分两列来源；模型 content 为空时 `decision_note_source=missing`，证据链由 `decision_summary` 补足。
 
 ### 10.3 禁止与脱敏
 
@@ -815,8 +818,9 @@ $env:PYTHONUTF8=1
 | 集成 | `tests/test_finalize_guard.py` | **独立证明（Q2）**：草稿旁白含"效率提升 80%"且无引用 → 规则检查命中 `CITE-001` error；模型已 `finish` 时 finalize 仍判 `failed`，绝不 `completed`；同一文本配无关引用（P01 原文不含 80%）仍 error；构造含"效率提升 80%"原文的测试数据集并正确引用时可通过（证明不是一刀切禁词） |
 | 单元 | `tests/test_dataset.py` | 三个 JSON 加载与 schema 校验；重复 ID 报错；正则编译失败报错；**空素材数组合法**（AC-08b 夹具）；默认数据约束由独立测试锁死（P01 恰好一条事实、素材无效果数据）；平台 `max_duration_rule_id` 必填且格式/唯一性校验；固定回退词 `星河旅拍指南` 在默认数据上 0 命中；digest 稳定与内容变更 |
 | 单元 | `tests/test_registry.py` | 注入第 1 次失败、后续成功；无条件注入每次失败；参数非法返回 `invalid_arguments`；未知工具错误；调用计数准确；控制动作不可注入 |
-| 集成 | `tests/test_graph_offline.py` | 正常 → `completed` 且 trace 顺序正确；**AC-05 核心数值**：首稿 38 秒（`>30`、`too_long`）→ 改稿 → 最终 28 秒（`≤30` 且 `within`）；**受控目标对照**：同数据下 target=30 → 38→28（压缩）、target=60 → 38→58（扩张），两条 trace 的 verdict/动作方向不同；**受控检索对照**：默认数据 → 命中→`completed` 且引用 P01，`--data-dir` 空素材变体 → ≥2 次 0 结果→`ask_user`→`needs_input`；可恢复失败 → `completed` 且 `tool_errors` 有注入记录；持续失败 → `failed`；**步数上限边界**：最后一个允许步 `finish` 且复算通过 → `completed`，同预算未 `finish` → `incomplete`；**工具调用预算 16/17 边界**：已用 16 时下一批预检失败 → 不执行、trace 有 `skipped_tool_calls`、`incomplete(tool_call_limit)`；15+2 同样整批跳过；`--max-steps 3` → `incomplete`；一批多个 tool_calls 逐条回填（tool 消息数==调用数）；finish 与 ask_user 同批 → `failed`；无 tool_calls 提前终止且校验不过 → `failed`；每条 `model_response` 的 `decision_note` 非空且 trace 无 `reasoning_content` |
-| 集成 | `tests/test_output.py` | 输出字段齐全；引用三元组全部可回溯；逐镜时长与总时长三方一致；`completed` 蕴含 `within && rules.ok`；`failed` 必有 `failure`；trace 无 `reasoning_content`、无密钥值；`data_digest`/`budget`/`trace_path` 正确 |
+| 单元 | `tests/test_state.py`、`tests/test_trace.py`、`tests/test_prompt.py`、`tests/test_config.py` | 预算换算与非法值；trace JSONL 公共字段/seq/ts、密钥脱敏、递归移除 `reasoning_content`、覆盖写；prompt 含硬约束与 `decision_note` 要求；config 缺变量报错不泄漏值、`LLM_PROXY` 透传 |
+| 集成 | `tests/test_runner.py` | 正常 → `completed` 且 trace 顺序正确；**AC-05 核心数值**：首稿 38 秒（`>30`、`too_long`）→ 改稿 → 最终 28 秒（`≤30` 且 `within`）；**受控目标对照**：同数据下 target=30 → 38→28（压缩）、target=60 → 38→58（扩张），两条 trace 的 verdict/动作方向不同；**受控检索对照**：默认数据 → 命中→`completed` 且引用 P01，`--data-dir` 空素材变体 → ≥2 次 0 结果→`ask_user`→`needs_input`；可恢复失败 → `completed` 且 `tool_errors` 有注入记录；持续失败 → `failed`；**步数上限边界**：最后一个允许步 `finish` 且复算通过 → `completed`，同预算未 `finish` → `incomplete`；**工具调用预算 16/17 边界**：已用 16 时下一批预检失败 → 不执行、trace 有 `skipped_tool_calls`、`incomplete(tool_call_limit)`；15+2 同样整批跳过；`--max-steps 3` → `incomplete`；finish 与 ask_user 同批 → `failed`；**CITE-001 兜底**：旁白"效率提升 80%"无引用时即使 finish 也判 `failed`；`decision_note` 为空时 `decision_note_source=missing` 且 `decision_summary` 非空、有 content 时两者都在；输出时长/引用三方一致；每步 trace 无 `reasoning_content` |
+| 集成 | `tests/test_output.py` | 输出字段齐全；引用三元组全部可回溯；逐镜时长与总时长三方一致；`completed` 蕴含 `within && rules.ok`；`failed` 必有 `failure`；trace 无 `reasoning_content`、无密钥值；`data_digest`/`budget`/`trace_path` 正确（当前由 `test_runner.py` 覆盖，文件合并实现） |
 | 集成 | `tests/test_examples_evidence.py` | marker `evidence`；**第三轮证据齐备后默认执行**；遍历 `examples/`：用例目录必须含 input/command/output/trace/README，`output.<mode>.json` 与 `trace.<mode>.jsonl` 的 run_id/status/mode 一致，trace 为合法 JSONL 且首尾为 `run_start`/`run_end`；**缺失文件、mode/run_id/status 不一致、或 examples 无任何证据目录 → fail，不允许 skip/空跑**；真实性由需求方按 `docs/03` 复跑比对，测试不假装能验证 |
 | 端到端 | `tests/test_cli.py` | 子进程跑 `python -m src.cli run` 各离线场景（AC-01–AC-08）；stdout 是合法 JSON；退出码 0/3/4/5 对应状态；缺失 `audience` → 3；输入 JSON 与 CLI 参数合并/覆盖；`--offline` 无密钥可跑；未知平台 → 3；非法注入 → 2；`--data-dir` 对照实验可复跑；AC-05/AC-08 命令可在 `examples/` 目录按 `command.*.txt` 原样复跑 |
 | 真实 | `tests/test_real_smoke.py -m real` | 正式真实决策证据跑 AC-03a / AC-08b no_hit / AC-04a（刺激必然发生，分别断言连续 0 结果有可见反应且无编造、与 hit 组动作不同、注入失败后重试/调整）；AC-05 real、AC-08a real 作为加分证据另跑并如实记录；断言硬约束（区间、引用可回溯、规则 error 0）；无密钥自动 skip |
@@ -847,7 +851,7 @@ examples/
   pytest-real.txt         # 真实模型冒烟测试输出（实际命令重定向，docs/03 引用）
 ```
 
-每个用例目录至少包含：`input.json`（真实输入）、`command.<mode>.txt`（在仓库根目录可原样执行的完整命令，含 `PYTHONUTF8=1`）、`output.<mode>.json`、`trace.<mode>.jsonl`、`README.md`（mode、关键数值、判定结论、命中的分支）。真实/离线并存时用文件名后缀区分，禁止互相替代。`examples/pytest-offline.txt` 与 `examples/pytest-real.txt` 由实际 pytest 命令的 stdout/stderr 重定向生成，`docs/03` 引用；同样禁止手写。
+每个用例目录至少包含：`input.json`（真实输入）、`command.<mode>.txt`（在仓库根目录可原样执行的完整命令，含 `PYTHONUTF8=1`）、`output.<mode>.json`、`trace.<mode>.jsonl`、`README.md`（mode、关键数值、判定结论、命中的分支）。README 必须写清 trace 两列来源：`decision_note`/`decision_note_source` 来自模型可见 content，`decision_summary`/`decision_summary_source=orchestrator` 是编排层事实摘要，不能混称模型输出。真实/离线并存时用文件名后缀区分，禁止互相替代。`examples/pytest-offline.txt` 与 `examples/pytest-real.txt` 由实际 pytest 命令的 stdout/stderr 重定向生成，`docs/03` 引用；同样禁止手写。
 
 #### 15.4.2 核心证据（AC-05 参考实例）
 
