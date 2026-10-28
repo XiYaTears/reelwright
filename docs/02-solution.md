@@ -2,12 +2,12 @@
 
 | 项 | 内容 |
 | --- | --- |
-| 版本 | v0.1（第一轮评审稿） |
+| 版本 | v1.0（第一轮评审通过，按评审意见修订） |
 | 日期 | 2026-10-28 |
-| 状态 | 待需求方评审 |
+| 状态 | 已评审，第二轮实现中 |
 | 维护 | 开发方 |
-| 上游 | `docs/01-requirements.md`、`AGENTS.md` |
-| 说明 | 本文只做设计，不含业务代码；第二轮按本文实现 |
+| 上游 | `docs/01-requirements.md`、`AGENTS.md`、第一轮评审意见 |
+| 说明 | 第二至五节为设计依据；第二轮按本文实现，实现阶段以代码与 `docs/03` 为准，不再扩写本文 |
 
 ## 1. 设计目标与原则
 
@@ -334,6 +334,7 @@ def route_after_tools(state) -> Literal["agent", "finalize"]:
 ### 5.2 一个模型步的语义
 
 1. **agent 节点**：调 `LLMClient.chat(messages, tools=TOOL_SCHEMAS)`；把 assistant 消息（content + tool_calls）追加进 messages，`step += 1`；写 `model_response` trace。
+   - **可见决策说明**：prompt 要求模型每次发起 `tool_calls` 时，在 content 里用一句不超过 40 字的话说明"这一步做什么"；agent 节点提取为 `decision_note` 写入 trace（模型可见输出，不是思维链；缺失时记空串并标记 `missing_decision_note`，不伪造）。
    - 思考模式的 `reasoning_content` 直接丢弃，不落盘、不进 state。
    - 模型一次返回多个 `tool_calls` 时全部保留，`id` 原样使用（缺失则生成 `call-<step>-<n>`）。
    - `terminal` 判定：含 `finish` ⇒ `finish`；含 `ask_user` ⇒ `ask_user`；两者同批 ⇒ `invalid`；无 tool_calls ⇒ `no_action`。
@@ -348,12 +349,12 @@ def route_after_tools(state) -> Literal["agent", "finalize"]:
 
 | 项 | 默认 | 强制方式 | 触顶结果 |
 | --- | --- | --- | --- |
-| 模型步数 | 8（CLI 可调 1–20） | `agent` 节点前路由判断；第 8 步的工具批执行完后不再回 agent | `status=incomplete`，`failure.code=step_limit` |
-| 工具调用数 | `2 × 步数上限`（默认 16） | 每批结束后累加，超过即收尾（批内不截断，保证每个 tool_call 都有回填） | `status=incomplete`，`failure.code=tool_call_limit` |
+| 模型步数 | 8（CLI 可调 1–20） | `agent` 节点前路由判断；第 8 步的工具批执行完后不再回 agent | **末步含 `finish` 且 finalize 复算通过 → `completed`**；末步 `finish` 但复算不过 → `failed`；**未 finish 即触顶 → `incomplete`**，`failure.code=step_limit` |
+| 工具调用数 | `2 × 步数上限`（默认 16） | 每批结束后累加，超过即收尾（批内不截断，保证每个 tool_call 都有回填） | 同上：已 `finish` 则按复算判定，否则 `incomplete`，`failure.code=tool_call_limit` |
 | 单批 tool_calls | 不额外限制（受模型行为约束） | —— | —— |
 | LangGraph 递归 | `2 × 步数上限 + 5` | `compiled.invoke(..., config={"recursion_limit": ...})` 作最后保险 | 捕获 `GraphRecursionError` → `failed`，`failure.code=orchestration_error` |
 
-预算触顶时仍用最新提交稿做一次估算/规则复算，把未解决项写进 `failure.evidence`，不伪造通过。
+**边界语义（写死并测试）**：预算耗尽不等于未完成——只要模型在**最后一个允许步**给出 `finish` 且 finalize 复算通过，就判 `completed`；只有"触顶且未 finish / finish 后复算不过"才得到 `incomplete` / `failed`。预算触顶时仍用最新提交稿做一次估算/规则复算，把未解决项写进 `failure.evidence`，不伪造通过。
 
 ### 5.4 典型步数
 
@@ -405,7 +406,7 @@ def route_after_tools(state) -> Literal["agent", "finalize"]:
   "materials": [{
     "material_id": "P01", "title": "字幕功能说明", "tags": ["字幕", "剪辑"],
     "facts": [{ "fact_id": "P01-F1", "text": "支持字幕", "kind": "feature" }],
-    "score": 8, "matched_terms": ["字幕"], "matched_in": ["title", "tags", "fact"]
+    "score": 6, "matched_terms": ["字幕"], "matched_in": ["title", "tags", "fact"]
   }]
 }
 ```
@@ -582,7 +583,7 @@ within          = window_min ≤ total_s ≤ window_max
 
 **演算示例（公式说明，非运行证据）**：目标 30 秒 → 区间 `[27, 33]`；6 镜旁白字数 `25/26/27/22/23/18`（字幕均很短）→ 逐镜 `7/7/7/6/6/5` → 总 38 秒，`too_long`（超 5 秒）；压缩为 5 镜旁白字数 `22/23/24/18/19` → `6/6/6/5/5` → 总 28 秒，`within`。该 38→28 演算对应 AC-05，离线固定策略会确定性地复现这两个数。
 
-**参考实例的验收加严（核心证据）**：AC-05 正式可复跑用例要求"首稿估算 38 秒（>30）→ 压缩 → 重新估算 28 秒（≤30）"，除通用区间外额外要求 `total ≤ target`；即最终必须同时满足 `27 ≤ total_s ≤ 30`。通用场景（如 AC-01）仍按 ±10% 区间判定。真实模型同场景运行须另存证据并如实记录实际数值：若其首稿直接 ≤30（未触发压缩分支），标注"分支未触发"，不得改写 trace 补造首稿。
+**参考实例与真实模式口径（核心证据）**：AC-05 离线正式用例要求"首稿估算 38 秒（>30）→ 压缩 → 重新估算 28 秒（≤30 且 within）"，确定性复跑，即 `27 ≤ total_s ≤ 30`。**真实模式运行时只用通用 ±10% 区间**：最终 27–33 且引用可回溯即 `completed`（≤30 记"与参考实例一致"，31–33 记"在容差内、高于参考实例"），不要求 38→28，不因未压到 ≤30 判 `failed`；真实首稿/最终值如实记录，压缩分支未触发则标注。正式真实模式决策证据改用刺激必然发生的三条场景（AC-03a、AC-08b no_hit、AC-04a，见 01 §7.2 / 本文 §15.4.5）。
 
 **受控对照的公式含义**：同一份 38 秒初稿，在目标 30 秒下判为 `too_long`（须压缩），在目标 60 秒下区间 `[54, 66]` 判为 `too_short`（须扩张）——这是 AC-08a"只改目标时长、下一步动作方向随之改变"的确定性依据。
 
@@ -670,7 +671,7 @@ within          = window_min ≤ total_s ≤ window_max
 | --- | --- | --- |
 | `run_start` | 图启动前 | `mode`、`input`（无密钥）、`budget`、`data_digest`、`formula_version`、`model`（真实模式）、`injection`（注入配置摘要） |
 | `input_validation` | 输入校验后 | `ok`、`missing_fields[]`、`invalid_fields[]`、`status`（needs_input 时） |
-| `model_response` | 每次模型调用后 | `step`、`tool_calls[{name, arguments}]`、`finish_reason`、`usage{prompt_tokens, completion_tokens}`、`content_excerpt`（≤200 字，仅可见回复，非思维） |
+| `model_response` | 每次模型调用后 | `step`、`decision_note`（模型在 content 中给的一句 ≤40 字本步意图，来自可见输出；缺失记 `""` 并置 `missing_decision_note: true`）、`tool_calls[{name, arguments}]`、`finish_reason`、`usage{prompt_tokens, completion_tokens}`、`content_excerpt`（≤200 字可见回复，供审计，非思维） |
 | `tool_result` | 每个 tool_call 执行后 | `step`、`tool`、`call_id`、`ok`、`duration_ms`、`injected`、`error{code,message,retryable}`、`observation`（结构化摘要，如 `{"total_matched":1,"material_ids":["P01"]}`、`{"total_duration_s":38,"within":false,"window":[27,33]}`、`{"errors":2,"rule_ids":["CITE-001"],"shot_indexes":[2]}`）、`decision_hint`（机械摘要，如 `no_hits:rewrite_or_ask_user`，由观察结果规则化生成，不是模型思维） |
 | `finalize` | 收尾节点 | `step`、`status`、`failure_code`、`estimate`（摘要）、`rules`（统计+违规 ID）、`mismatch`、`budget` |
 | `run_end` | 输出组装后 | `status`、`steps_used`、`tool_calls_used`、`duration_ms`、`exit_code` |
@@ -695,6 +696,8 @@ within          = window_min ≤ total_s ≤ window_max
 | 差异点 | 仅 LLM 客户端与 run_start 的 mode/model 字段 | 同左 |
 
 真实模式参数：`temperature=0.0`、`max_tokens=4096`、`tool_choice="auto"`、`stream=false`；思考模式不主动关闭（`tool_choice` 只允许 auto，符合实测约束），响应中的 `reasoning_content` 一律丢弃；HTTP 超时 60 秒，超时/5xx 重试 2 次（间隔 1 秒、2 秒），仍失败则本次运行 `failed`（`llm_error`），不伪造结果。
+
+**base URL 口径**：`.env.example` 统一写"含 `/v1` 的 OpenAI 兼容根"（如 `https://api.deepseek.com/v1`）；客户端 `normalize_base_url()` 去掉尾部 `/`，若不以 `/v1` 结尾自动补 `/v1`，再拼 `/chat/completions`，因此 `.env.local` 写成不带 `/v1` 的根地址（当前实际值）也能工作。README 写明该口径。
 
 **离线 mock 的边界（必须写进 README 与评估文档）**：mock 是"读取真实工具返回结果后按固定规则作决策"的策略实现，用于验证流程分支与受控对照；它不会生成真实模型质量的文案，不能作为模型能力证据。mock 可读取合成数据集来构造引用与查询词（仅为离线链路演示，真实模型只能通过工具看到数据）。固定策略：
 
@@ -759,7 +762,7 @@ CLI（可重复，与 JSON 合并，同一工具只允许一条规则，重复�
 ### 13.3 取舍与代价
 
 - 收益：编排显式、终止与预算可判定、每一步可观测；模型/工具/校验解耦，可分别测试；真实/离线切换只换 LLM 客户端。
-- 代价：图很简单（3 节点），LangGraph 的价值主要在状态通道与循环骨架，算力/复杂度收益有限；版本升级需跟 API（已 pin 1.2.18）。若后续需求简化为单次调用，可评估去掉 LangGraph——当前为满足"显式 StateGraph + 逐步骤可观测"的合同要求而保留。
+- 代价：图很简单（3 节点），LangGraph 的价值主要在状态通道与循环骨架，算力/复杂度收益有限；版本升级需跟 API（已 pin 1.2.18）。若后续需求简化为单次调用，可评估去掉 LangGraph——当前为满足工程契约（`AGENTS.md`）"显式 StateGraph + 逐步骤可观测"的要求而保留。
 - 我们"改了什么"：没有替换 LangGraph 的图执行；在节点内部自写 agent/tool/finalize 语义、自写 DeepSeek 客户端、自写 trace、自写预算与失败注入，图只承担骨架。
 
 ## 14. 技术选型与依赖
@@ -767,7 +770,7 @@ CLI（可重复，与 JSON 合并，同一工具只允许一条规则，重复�
 | 选择 | 版本/方案 | 理由 | 放弃的方案 |
 | --- | --- | --- | --- |
 | Python | 3.13.5（`.venv`） | 需求方指定，已验证依赖可装 | 其他版本 |
-| 编排 | langgraph `==1.2.18` | 合同要求显式 StateGraph；已验证 | 手写循环（不满足合同）、`create_react_agent` |
+| 编排 | langgraph `==1.2.18` | 工程契约（`AGENTS.md`）要求显式 StateGraph；已验证 | 手写循环（不满足工程契约）、`create_react_agent` |
 | 消息类型底座 | langchain-core `==1.7.0` | 与 langgraph 验证配对；只作为依赖锁定，不直接使用其消息类 | 不锁（版本漂移风险） |
 | HTTP/模型 | httpx `==0.28.1` | 直接说 DeepSeek HTTP 契约，零黑盒 | openai SDK / ChatDeepSeek（多一层封装） |
 | 配置 | python-dotenv `==1.2.4` | 解析 `.env.local`，避免手写边界情况 | 手写 parser |
@@ -790,6 +793,8 @@ $env:PYTHONUTF8=1
 .venv\Scripts\python -m pytest -q -m real  # 真实模型冒烟（需 .env.local，默认跳过）
 ```
 
+项目根 `pytest.ini`：注册 marker `real`，设置 `addopts = -m "not real"`，默认一条命令即排除真实测试；需要真实冒烟时用 `-m real` 覆盖启用（不靠口头约定）。
+
 ### 15.2 分层与用例矩阵
 
 | 层 | 文件 | 用例（断言行为，不断言日志） |
@@ -797,13 +802,14 @@ $env:PYTHONUTF8=1
 | 单元 | `tests/test_duration.py` | 公式逐镜/总时长；30 秒窗口 27–33；38→28 演算；空字幕/纯字幕/超长文本；下限 5 秒与上限 300 秒；整数运算无浮点误差；`duration_s` 与文本复算一致 |
 | 单元 | `tests/test_materials.py` | "字幕"命中 P01；多 token 权重与排序稳定；top_k 截断；无结果返回空且 `ok=true`；空查询/超长查询参数错误 |
 | 单元 | `tests/test_rules.py` | 品牌禁用词命中 title/narration/caption；平台禁用词按平台生效；平台时长上限；夸大正则；引用素材/事实不存在；quote 非原文子串；"80%"无引用命中 CITE-001；有原文引用的数字通过；空镜 warning 不阻塞；`ok` 只由 error 决定；去重/排序/截断 |
+| 集成 | `tests/test_finalize_guard.py` | **独立证明（Q2）**：草稿旁白含"效率提升 80%"且无引用 → 规则检查命中 `CITE-001` error；模型已 `finish` 时 finalize 仍判 `failed`，绝不 `completed`；同一文本配无关引用（P01 原文不含 80%）仍 error；构造含"效率提升 80%"原文的测试数据集并正确引用时可通过（证明不是一刀切禁词） |
 | 单元 | `tests/test_dataset.py` | 三个 JSON 加载与 schema 校验；重复 ID 报错；正则编译失败报错；P01 只有一条事实；digest 稳定 |
 | 单元 | `tests/test_registry.py` | 注入第 1 次失败、后续成功；无条件注入每次失败；参数非法返回 `invalid_arguments`；未知工具错误；调用计数准确；控制动作不可注入 |
-| 集成 | `tests/test_graph_offline.py` | 正常 → `completed` 且 trace 顺序正确；**AC-05 核心数值**：首稿 38 秒（`>30`、`too_long`）→ 改稿 → 最终 28 秒（`≤30` 且 `within`）；**受控目标对照**：同数据下 target=30 → 38→28（压缩）、target=60 → 38→58（扩张），两条 trace 的 verdict/动作方向不同；**受控检索对照**：默认数据 → 命中→`completed` 且引用 P01，`--data-dir` 空素材变体 → ≥2 次 0 结果→`ask_user`→`needs_input`；可恢复失败 → `completed` 且 `tool_errors` 有注入记录；持续失败 → `failed`；`--max-steps 3` → `incomplete`；一批多个 tool_calls 逐条回填（tool 消息数==调用数）；finish 与 ask_user 同批 → `failed`；无 tool_calls 提前终止且校验不过 → `failed` |
+| 集成 | `tests/test_graph_offline.py` | 正常 → `completed` 且 trace 顺序正确；**AC-05 核心数值**：首稿 38 秒（`>30`、`too_long`）→ 改稿 → 最终 28 秒（`≤30` 且 `within`）；**受控目标对照**：同数据下 target=30 → 38→28（压缩）、target=60 → 38→58（扩张），两条 trace 的 verdict/动作方向不同；**受控检索对照**：默认数据 → 命中→`completed` 且引用 P01，`--data-dir` 空素材变体 → ≥2 次 0 结果→`ask_user`→`needs_input`；可恢复失败 → `completed` 且 `tool_errors` 有注入记录；持续失败 → `failed`；**步数上限边界**：最后一个允许步 `finish` 且复算通过 → `completed`，同预算未 `finish` → `incomplete`；`--max-steps 3` → `incomplete`；一批多个 tool_calls 逐条回填（tool 消息数==调用数）；finish 与 ask_user 同批 → `failed`；无 tool_calls 提前终止且校验不过 → `failed`；每条 `model_response` 的 `decision_note` 非空且 trace 无 `reasoning_content` |
 | 集成 | `tests/test_output.py` | 输出字段齐全；引用三元组全部可回溯；逐镜时长与总时长三方一致；`completed` 蕴含 `within && rules.ok`；`failed` 必有 `failure`；trace 无 `reasoning_content`、无密钥值；`data_digest`/`budget`/`trace_path` 正确 |
 | 集成 | `tests/test_examples_evidence.py` | 遍历 `examples/`：用例目录包含 input/command/output/trace/README；`output.<mode>.json` 与 `trace.<mode>.jsonl` 的 run_id、status、mode 一致；trace 为合法 JSONL 且首尾事件为 `run_start`/`run_end`；目录 README 声明 mode 与复跑命令；证据缺失时 skip 并提示（第三轮启用） |
 | 端到端 | `tests/test_cli.py` | 子进程跑 `python -m src.cli run` 各离线场景（AC-01–AC-08）；stdout 是合法 JSON；退出码 0/3/4/5 对应状态；缺失 `audience` → 3；输入 JSON 与 CLI 参数合并/覆盖；`--offline` 无密钥可跑；未知平台 → 3；非法注入 → 2；`--data-dir` 对照实验可复跑；AC-05/AC-08 命令可在 `examples/` 目录按 `command.*.txt` 原样复跑 |
-| 真实 | `tests/test_real_smoke.py -m real` | 有密钥时跑 AC-01/AC-05 与 AC-08a/AC-08b 对照；断言硬约束（状态、区间、引用可回溯、规则 error 0）并核对离线/真实证据分开存放；不比对文案；无密钥自动 skip |
+| 真实 | `tests/test_real_smoke.py -m real` | 正式真实决策证据跑 AC-03a / AC-08b no_hit / AC-04a（刺激必然发生，分别断言连续 0 结果有可见反应且无编造、与 hit 组动作不同、注入失败后重试/调整）；AC-05 real、AC-08a real 作为加分证据另跑并如实记录；断言硬约束（区间、引用可回溯、规则 error 0）；无密钥自动 skip |
 
 ### 15.3 测试原则
 
@@ -827,20 +833,22 @@ examples/
   07_step_limit/          --max-steps 3 → incomplete
   08_controlled_target/   target_30/、target_60/、README.md（同主题，仅目标时长不同）
   09_controlled_retrieval/ hit/、no_hit/、no_hit_data/（素材为空、规则同套）、README.md（同主题，仅检索结果不同）
+  pytest-offline.txt      # 全量离线测试输出（实际命令重定向，docs/03 引用）
+  pytest-real.txt         # 真实模型冒烟测试输出（实际命令重定向，docs/03 引用）
 ```
 
-每个用例目录至少包含：`input.json`（真实输入）、`command.<mode>.txt`（在仓库根目录可原样执行的完整命令，含 `PYTHONUTF8=1`）、`output.<mode>.json`、`trace.<mode>.jsonl`、`README.md`（mode、关键数值、判定结论、命中的分支）。真实/离线并存时用文件名后缀区分，禁止互相替代。
+每个用例目录至少包含：`input.json`（真实输入）、`command.<mode>.txt`（在仓库根目录可原样执行的完整命令，含 `PYTHONUTF8=1`）、`output.<mode>.json`、`trace.<mode>.jsonl`、`README.md`（mode、关键数值、判定结论、命中的分支）。真实/离线并存时用文件名后缀区分，禁止互相替代。`examples/pytest-offline.txt` 与 `examples/pytest-real.txt` 由实际 pytest 命令的 stdout/stderr 重定向生成，`docs/03` 引用；同样禁止手写。
 
 #### 15.4.2 核心证据（AC-05 参考实例）
 
 - `examples/05_over_duration/offline/`：固定策略确定性运行，必须复现"首稿 38 秒（>30，too_long）→ 改稿 → 重新估算 28 秒（≤30 且 within）"；README 写清两次估算值、两次提交的差异、最终引用 P01"支持字幕"、复跑命令。
-- `examples/05_over_duration/real/`：同一输入真实模型运行，保留实际 trace；README 记录实际首稿/最终估算、改稿次数；若首稿直接 ≤30 或模型未触发压缩分支，如实标注"分支未触发"并说明该组只证明硬约束；**不得为了凑 38→28 改写或补写 trace**。
-- 核心证据的结论表述必须区分"离线流程证据"与"真实模型决策证据"。
+- `examples/05_over_duration/real/`：同一输入真实模型运行，保留实际 trace；README 记录实际首稿/最终估算、改稿次数；**该组只作加分证据，不作唯一依赖**。真实模式判定只用通用区间：最终 27–33 且引用可回溯即 `completed`（≤30 记"与参考实例一致"，31–33 记"在容差内、高于参考实例"）；未触发压缩分支或最终不在区间均如实记录；**不得为了凑 38→28 改写或补写 trace，也不得因未压到 ≤30 强行判 failed**。
+- 正式真实模式决策证据见 §15.4.5（三条刺激必然发生的场景）；核心证据的结论表述必须区分"离线流程证据"与"真实模型决策证据"。
 
 #### 15.4.3 受控对照证据（AC-08）
 
-- `08_controlled_target`：`target_30` 与 `target_60` 的输入除 `target_duration_s` 外逐字段相同（同主题/受众/平台/风格/同一 dataset）。离线确定性要求：两组首稿同为 38 秒；30s 组 `too_long` → 28 秒，60s 组 `too_short` → 58 秒；README 对比表列出首稿估算、verdict、改稿方向、最终总时长、分镜数、动作序列实际值。真实模型两组均跑，实际数值填表；出现一次成稿/未改稿也如实标注。
-- `09_controlled_retrieval`：`hit` 用默认 `data/`；`no_hit` 用 `--data-dir examples/09_controlled_retrieval/no_hit_data/`（`materials.json` 素材为空、品牌/平台规则与原数据相同），两组输入逐字段相同。离线确定性要求：`hit` → 检索命中 → 提交/估算/规则 → `completed` 且引用 P01；`no_hit` → ≥2 次检索均为 0 条 → `ask_user` → `needs_input`。README 对比表列出每次查询词、结果数、工具调用序列、最终状态。真实模型两组均跑，如实记录。
+- `08_controlled_target`：`target_30` 与 `target_60` 的输入除 `target_duration_s` 外逐字段相同（同主题/受众/平台/风格/同一 dataset）。离线确定性要求：两组首稿同为 38 秒；30s 组 `too_long` → 28 秒，60s 组 `too_short` → 58 秒；README 对比表列出首稿估算、verdict、改稿方向、最终总时长、分镜数、动作序列实际值。真实模型两组均跑，只作加分证据：断言各自落在通用区间与引用可回溯，实际数值填表；**不硬性要求方向差异**，出现一次成稿/未改稿如实标注，不得补写。
+- `09_controlled_retrieval`：`hit` 用默认 `data/`；`no_hit` 用 `--data-dir examples/09_controlled_retrieval/no_hit_data/`（`materials.json` 素材为空、品牌/平台规则与原数据相同），两组输入逐字段相同。离线确定性要求：`hit` → 检索命中 → 提交/估算/规则 → `completed` 且引用 P01；`no_hit` → ≥2 次检索均为 0 条 → `ask_user` → `needs_input`。README 对比表列出每次查询词、结果数、工具调用序列、最终状态。真实模型 `hit` 与 `no_hit` 两组均跑，其中 `no_hit/real` 是正式决策证据（见 §15.4.5），判定同 01 §7.2。
 - 对照结论必须引用具体 trace 事件（如两次 `tool_result` 的查询词与 `total_matched`、两次 `model_response` 的 `tool_calls` 名称与参数），不得只写主观结论。
 
 #### 15.4.4 trace 来源约束（硬性）
@@ -851,6 +859,20 @@ examples/
 4. 同一组的 `output` 与 `trace` 必须属于同一次运行（`run_id`、`status`、预算一致）；不允许跨运行拼接。
 5. 用例实际结果与预期分支不符时，保留真实结果并在 README 说明，**不得为满足验收条件重写证据**；由需求方评审决定是否需要重新运行。
 6. `tests/test_examples_evidence.py` 自动核对结构一致性（存在性、mode/run_id/status、trace 首尾事件）；真实性依赖上述流程约束与人工抽查，测试不能替代。
+
+#### 15.4.5 正式真实模式"决策证据"（三条刺激必然发生的场景）
+
+正式真实 trace 固定取以下三条，`README` 与 `docs/03` 标注"决策证据"；AC-05 real、AC-08a real 只作加分证据，不作唯一依赖：
+
+| 场景 | 证据目录 | 必然发生的刺激 | 真实模式判定 |
+| --- | --- | --- | --- |
+| AC-03a | `examples/03_no_result/a_no_hit/real/` | 检索连续 0 结果 | 连续 0 结果后有可见反应（改写查询 → `ask_user`/`needs_input`；或明确 `failed` 说明检索持续无结果），全程无编造；与同场景离线 trace 对照 |
+| AC-08b no_hit | `examples/09_controlled_retrieval/no_hit/real/` | 检索连续 0 结果 | 与 `hit/real` 对照：查询词、`total_matched`、工具调用序列/状态不同；判定同 01 §7.2 |
+| AC-04a | `examples/04_tool_failure/a_recoverable/real/` | 注入 `search_materials=timeout@1` 必失败 | 观察到"失败 → 重试/调整"，`tool_errors` 含注入记录，最终不把失败当成功；与无注入 trace 对照动作不同 |
+
+- 三条证据的判定以 trace 中可观察的 `tool_calls`、查询词/参数、`total_matched`、`tool_errors`、最终状态为准，不做文案比对。
+- 正式证据必须真实运行；离线固定策略的同场景 trace 可作对照，但不能替代真实 trace。
+- 真实结果与预期分支不符时保留原样并在 README 说明，禁止补写或重造。
 
 ## 16. 实施顺序（第二轮，按提交拆分）
 
@@ -874,8 +896,8 @@ examples/
 | --- | --- | --- |
 | 语义级事实误用 | 有引用但张冠李戴无法自动判定 | 提示词强约束 + 逐字引用校验 + 人工评审；文档明确边界 |
 | 真实模型不稳定 | 同一输入可能超时长/漏引用，验收不可复现 | 离线固定策略保证流程可复现；真实验收只断言硬约束；失败可重跑，证据保留实际结果 |
-| AC-05 核心用例在真实模式首稿不可控 | 真实模型可能首稿直接 ≤30，压缩分支不触发，无法用真实 trace 复现 38→28 | 正式核心证据用离线确定性 38→28（明确标注流程证据）；真实同场景另跑并如实记录；禁止补写 trace；若需求方要求真实模式也必须触发压缩，则需调整提示词/输入并重新评审 |
-| 受控对照在真实模式未出现预期动作差异 | 真实模型两次都一次成稿，无法证明"动作随输入改变" | 确定性对照（离线）作为可判定证据；真实对照作为决策质量证据，实际差异如实填表；若连续无差异，评审时讨论是否调整场景或提示词 |
+| AC-05 核心用例在真实模式首稿不可控 | 真实模型可能首稿直接 ≤30 或不触发压缩，无法用真实 trace 复现 38→28 | 正式核心证据用离线确定性 38→28（明确标注流程证据）；AC-05 real 只作加分证据，真实模式只用通用区间（27–33 即 `completed`，不因未压到 ≤30 判 failed），实际值如实记录；禁止补写 trace |
+| 受控对照在真实模式未出现预期动作差异 | 真实模型两次都一次成稿，无法证明"动作随输入改变" | 真实对照（AC-08a）只作加分证据、不硬性要求方向差异；正式真实决策证据改用刺激必然发生的三条场景（§15.4.5）；实际差异如实填表 |
 | 证据被质疑手工伪造 | 验收可信度下降 | trace 来源约束（§15.4.4）+ `test_examples_evidence.py` 结构校验 + 保存真实运行的 output/trace 与命令；不得改名/拼接/补写 |
 | 时长公式是近似 | 4 字/秒、5 字/秒与真实语速有偏差 | 常量集中、版本化 `duration-v1`；需求确认后可调并同步测试/文档 |
 | 平台规则为合成数据 | 不能当真实合规依据 | README/文档显著标注；规则可替换为内部规范后重跑 |
@@ -886,6 +908,6 @@ examples/
 | LangGraph API 变化 | 升级破坏 | 精确锁 1.2.18；升级需重跑全量测试并更新文档 |
 | 无持久化 | 进程中断丢运行态 | 单次运行可重跑；trace 实时 flush，已有证据不丢；不做恢复 |
 
-## 18. 待需求方拍板
+## 18. 需求方拍板记录（2026-10-28）
 
-与 `01-requirements.md` §11 一致，计 3 个：Q1 时长容差 ±10% 是否定稿；Q2 首发平台与规则覆盖范围；Q3 引用粒度与自动校验口径（语义误用人工兜底）。评审确认后本文档冻结为 v1.0，进入第二轮实现。
+需求方已确认第一轮设计并冻结：Q1 ±10% 容差定稿（AC-05 真实模式只用通用区间，38→28 为离线参考实例核心证据）；Q2 四平台定稿，规则集保持"禁用词 + 时长上限 + 夸大表述 + 事实支撑"，平台上限标注合成，并要求独立测试证明"效率提升 80%"无引用必判 `CITE-001` error、finalize 不得 `completed`；Q3 引用口径定稿（语义误用人工兜底）。正式真实模式决策证据固定为 AC-03a / AC-08b no_hit / AC-04a 三条刺激必然场景（§15.4.5）。按 §16 进入第二轮实现，文档不再扩写。
