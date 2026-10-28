@@ -55,17 +55,39 @@ def test_load_real_dataset_entities_and_indexes() -> None:
 
     assert tuple(dataset.platforms) == FIXED_PLATFORMS
     assert dataset.platforms["kuaishou"].max_total_duration_s == 25
+    assert dataset.platforms["kuaishou"].max_duration_rule_id == "PLAT-kuaishou-DUR-001"
     assert dataset.platforms["douyin"].max_total_duration_s == 180
     assert dataset.brand.brand_name == "小影"
     assert {rule.rule_id for rule in dataset.brand.banned_terms} >= {"BRAND-001", "BRAND-010"}
 
 
-def test_real_dataset_is_synthetic_without_effect_data() -> None:
+def test_default_data_p01_has_exactly_one_fact() -> None:
+    """默认数据约定（由测试锁死，加载器不硬编码）：P01 只含"支持字幕"一条事实。"""
+    dataset = load_dataset(DATA_DIR)
+    p01 = dataset.get_material("P01")
+    assert p01 is not None
+    assert [(fact.fact_id, fact.text) for fact in p01.facts] == [("P01-F1", "支持字幕")]
+
+
+def test_default_data_has_no_effect_data() -> None:
+    """默认数据约定（由测试锁死）：素材不含效果数据/认证，保证 R2 反例可判定。"""
     dataset = load_dataset(DATA_DIR)
     facts_text = "".join(fact.text for fact in dataset.all_facts())
     assert "%" not in facts_text
     assert "效率提升" not in facts_text
     assert "认证" not in facts_text and "专利" not in facts_text
+
+
+def test_fallback_query_misses_default_data() -> None:
+    """mock 固定回退词在默认数据上必须 0 命中（用于 AC-03a / no_hit 确定性）。"""
+    fallback = "星河旅拍指南"
+    dataset = load_dataset(DATA_DIR)
+    haystacks = [
+        *[material.title for material in dataset.materials],
+        *[tag for material in dataset.materials for tag in material.tags],
+        *[fact.text for fact in dataset.all_facts()],
+    ]
+    assert all(fallback not in haystack for haystack in haystacks)
 
 
 def test_digest_is_deterministic_and_changes_with_content(tmp_path: Path) -> None:
@@ -160,6 +182,13 @@ def test_invalid_rule_id_raises(tmp_path: Path) -> None:
         (lambda platforms: platforms["platforms"]["kuaishou"].update(max_total_duration_s=0), "5–600"),
         (lambda platforms: platforms["platforms"].pop("shipinhao"), "缺少固定平台"),
         (lambda platforms: platforms["platforms"].__setitem__("bilibili", {"display_name": "B"}), "未知平台"),
+        (lambda platforms: platforms["platforms"]["kuaishou"].pop("max_duration_rule_id"), "max_duration_rule_id"),
+        (
+            lambda platforms: platforms["platforms"]["kuaishou"].update(
+                max_duration_rule_id="PLAT-douyin-DUR-001"
+            ),
+            "格式不合法",
+        ),
     ],
 )
 def test_invalid_platform_rules_raise(tmp_path: Path, mutate, message: str) -> None:
@@ -169,6 +198,21 @@ def test_invalid_platform_rules_raise(tmp_path: Path, mutate, message: str) -> N
     _save_json(data_dir / "platform_rules.json", platform_rules)
     with pytest.raises(DatasetError, match=message):
         load_dataset(data_dir)
+
+
+def test_empty_materials_allowed(tmp_path: Path) -> None:
+    """AC-08b no_hit 夹具使用空素材数组；加载器不得拒绝。"""
+    data_dir = _copy_data(tmp_path)
+    materials = _load_json(data_dir / "materials.json")
+    materials["materials"] = []
+    _save_json(data_dir / "materials.json", materials)
+
+    dataset = load_dataset(data_dir)
+    assert dataset.materials == ()
+    assert dataset.all_facts() == ()
+    assert dataset.get_material("P01") is None
+    # 平台/品牌规则仍完整
+    assert dataset.platforms["kuaishou"].max_duration_rule_id == "PLAT-kuaishou-DUR-001"
 
 
 def test_data_files_are_utf8_without_bom() -> None:

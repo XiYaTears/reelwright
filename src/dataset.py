@@ -186,7 +186,8 @@ def _require_version(payload: Mapping[str, Any], expected: str, where: str) -> N
 
 def _load_materials(payload: Mapping[str, Any]) -> tuple[Material, ...]:
     _require_version(payload, "materials-v1", "materials.json")
-    items = _require_list(payload, "materials", "materials.json", min_len=1)
+    # 允许空素材数组：用于受控实验（AC-08b no_hit 空素材夹具）与"检索无结果"场景。
+    items = _require_list(payload, "materials", "materials.json", min_len=0)
     materials: list[Material] = []
     seen_materials: set[str] = set()
     seen_facts: set[str] = set()
@@ -377,6 +378,16 @@ def _load_platform_rules(payload: Mapping[str, Any]) -> Mapping[str, PlatformRul
             _fail(where, f"max_total_duration_s 必须在 5–600 之间，实际为 {max_total}")
         rule_id_pattern = re.compile(rf"^PLAT-{platform}-\d{{3}}$")
         banned_terms = _load_banned_terms(item, where, rule_id_pattern=rule_id_pattern)
+        max_duration_rule_id = _require_str(
+            item,
+            "max_duration_rule_id",
+            where,
+            max_len=40,
+            pattern=re.compile(rf"^PLAT-{platform}-DUR-\d{{3}}$"),
+        )
+        if max_duration_rule_id in seen_rule_ids:
+            _fail(where, f"重复的平台规则 ID：{max_duration_rule_id}")
+        seen_rule_ids.add(max_duration_rule_id)
         for term in banned_terms:
             if term.rule_id in seen_rule_ids:
                 _fail(where, f"重复的平台规则 ID：{term.rule_id}")
@@ -385,6 +396,7 @@ def _load_platform_rules(payload: Mapping[str, Any]) -> Mapping[str, PlatformRul
             platform=platform,
             display_name=display_name,
             max_total_duration_s=max_total,
+            max_duration_rule_id=max_duration_rule_id,
             banned_terms=banned_terms,
         )
     extra = [name for name in platforms_raw if name not in FIXED_PLATFORMS]

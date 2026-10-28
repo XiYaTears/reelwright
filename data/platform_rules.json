@@ -5,6 +5,7 @@
     "douyin": {
       "display_name": "抖音",
       "max_total_duration_s": 180,
+      "max_duration_rule_id": "PLAT-douyin-DUR-001",
       "banned_terms": [
         { "rule_id": "PLAT-douyin-001", "term": "微信", "severity": "error", "reason": "站外导流", "suggestion": "删除站外联系方式" },
         { "rule_id": "PLAT-douyin-002", "term": "二维码", "severity": "error", "reason": "站外导流", "suggestion": "删除站外导流元素" },
@@ -14,6 +15,7 @@
     "kuaishou": {
       "display_name": "快手",
       "max_total_duration_s": 25,
+      "max_duration_rule_id": "PLAT-kuaishou-DUR-001",
       "banned_terms": [
         { "rule_id": "PLAT-kuaishou-001", "term": "微信", "severity": "error", "reason": "站外导流", "suggestion": "删除站外联系方式" },
         { "rule_id": "PLAT-kuaishou-002", "term": "二维码", "severity": "error", "reason": "站外导流", "suggestion": "删除站外导流元素" }
@@ -22,6 +24,7 @@
     "xiaohongshu": {
       "display_name": "小红书",
       "max_total_duration_s": 60,
+      "max_duration_rule_id": "PLAT-xiaohongshu-DUR-001",
       "banned_terms": [
         { "rule_id": "PLAT-xiaohongshu-001", "term": "二维码", "severity": "error", "reason": "站外导流", "suggestion": "删除站外导流元素" },
         { "rule_id": "PLAT-xiaohongshu-002", "term": "淘宝", "severity": "error", "reason": "站外导流", "suggestion": "删除站外平台名称" }
@@ -30,6 +33,7 @@
     "shipinhao": {
       "display_name": "视频号",
       "max_total_duration_s": 120,
+      "max_duration_rule_id": "PLAT-shipinhao-DUR-001",
       "banned_terms": [
         { "rule_id": "PLAT-shipinhao-001", "term": "公众号", "severity": "error", "reason": "站外导流", "suggestion": "删除站外导流元素" }
       ]
