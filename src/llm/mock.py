@@ -453,6 +453,7 @@ class MockClient:
                 id=f"mock-call-{self._response_seq}-{index + 1}",
                 name=name,
                 arguments=args,
+                raw_arguments=json.dumps(args, ensure_ascii=False),
             )
             for index, (name, args) in enumerate(calls)
         )

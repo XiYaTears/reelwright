@@ -24,6 +24,7 @@ class ToolCall:
     id: str
     name: str
     arguments: dict[str, Any]
+    raw_arguments: str = ""
     arguments_error: str | None = None
 
 

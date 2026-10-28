@@ -193,6 +193,7 @@ class DeepSeekClient:
                     id=str(call_id),
                     name=name,
                     arguments=arguments,
+                    raw_arguments=raw_arguments if isinstance(raw_arguments, str) else "",
                     arguments_error=arguments_error,
                 )
             )
