@@ -9,7 +9,7 @@ import httpx
 import pytest
 
 from src.llm.base import LLMError, LLMResponse
-from src.llm.deepseek import DeepSeekClient, normalize_base_url
+from src.llm.deepseek import DeepSeekClient, normalize_base_url, normalize_tools
 
 MODEL = "deepseek-flash"
 
@@ -228,6 +228,29 @@ def test_broken_no_proxy_env_does_not_break_client(monkeypatch) -> None:
     response = client.chat([{"role": "user", "content": "x"}], [])
     client.close()
     assert response.tool_calls[0].name == "search_materials"
+
+
+def test_normalize_tools_wraps_bare_specs_and_keeps_wrapped() -> None:
+    bare = {"name": "search_materials", "description": "d", "parameters": {"type": "object"}}
+    wrapped = {"type": "function", "function": {"name": "estimate_duration"}}
+    assert normalize_tools([bare, wrapped]) == [
+        {"type": "function", "function": bare},
+        wrapped,
+    ]
+
+
+def test_chat_wraps_project_tool_specs_in_request_body() -> None:
+    captured: dict[str, Any] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["tools"] = json.loads(request.content.decode("utf-8"))["tools"]
+        return httpx.Response(200, json=_ok_payload())
+
+    spec = {"name": "search_materials", "description": "d", "parameters": {"type": "object"}}
+    client = _make_client(handler)
+    client.chat([{"role": "user", "content": "x"}], [spec])
+    client.close()
+    assert captured["tools"] == [{"type": "function", "function": spec}]
 
 
 def test_explicit_proxy_option_constructs() -> None:

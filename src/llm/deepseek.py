@@ -35,6 +35,21 @@ def normalize_base_url(base_url: str) -> str:
     return base
 
 
+def normalize_tools(tools: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """把工具 schema 规范化为 OpenAI tools 格式；已包装的原样保留。
+
+    项目内 `TOOL_SPECS` 是函数级 schema（name/description/parameters），
+    请求体必须再包一层 {"type":"function","function":...}。
+    """
+    normalized: list[dict[str, Any]] = []
+    for tool in tools:
+        if isinstance(tool, Mapping) and tool.get("type") == "function" and isinstance(tool.get("function"), Mapping):
+            normalized.append(dict(tool))
+        else:
+            normalized.append({"type": "function", "function": dict(tool)})
+    return normalized
+
+
 class DeepSeekClient:
     """统一 LLM 接口的真实实现。"""
 
@@ -91,7 +106,7 @@ class DeepSeekClient:
         body: dict[str, Any] = {
             "model": self.model_name,
             "messages": list(messages),
-            "tools": list(tools),
+            "tools": normalize_tools(tools),
             "tool_choice": "auto",
             "stream": False,
             "temperature": self._temperature,
