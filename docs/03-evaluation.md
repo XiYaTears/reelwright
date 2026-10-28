@@ -34,19 +34,29 @@ LangGraph 全链路（正常、AC-05 38→28、AC-03a/b、AC-04a/b、AC-06、AC-
 
 | 场景 | 结果 | 关键证据 |
 | --- | --- | --- |
-| AC-01 正常生成 | offline `completed` 28s；real `completed` 30s，6 镜，4 条素材引用，规则 0 error | `examples/01_normal/`（`output.offline.json`、`output.real.json`） |
-| AC-02 缺关键信息 | `needs_input`，缺 `audience`，无 `model_response` | `examples/02_missing_input/` |
-| AC-03a 无结果 | offline：改写+回退共 5 次 0 结果 → `needs_input`；real：改写后命中通用素材 → `completed`（按 AC-03b 分支，已在 README 注明） | `examples/03_no_result/a_no_hit/`（offline + real） |
-| AC-03b 改写命中 | offline `completed` 28s，引用 P01 | `examples/03_no_result/b_rewrite_hit/` |
-| AC-04a 工具可恢复失败 | offline/real `completed`，`tool_errors` 含 `injected=true` 的 timeout | `examples/04_tool_failure/a_recoverable/` |
-| AC-04b 工具持续失败 | `failed`，`failure.code=tool_failure_unrecovered`，无编造脚本 | `examples/04_tool_failure/b_persistent/` |
-| AC-05 超时长修正 | offline 核心 38→28（≥2 次估算、改稿重估、引用 P01）；real 31s（首稿即 within，压缩分支未触发，为加分证据） | `examples/05_over_duration/` |
-| AC-06 无法满足 | `failed`，`cannot_satisfy`；证据含目标区间 [27,33] vs kuaishou 上限 25、`PLAT-kuaishou-DUR-001` | `examples/06_unsatisfiable/` |
-| AC-07 步数上限 | `incomplete`，`step_limit`，保留 38s 草稿 | `examples/07_step_limit/` |
-| AC-08a 只改目标时长 | offline：同 38s 初稿 → 30s 目标压缩 28 / 60s 目标扩张 58；两条 trace 动作方向相反 | `examples/08_controlled_target/` |
-| AC-08b 只改检索结果 | offline/real：hit `completed`；no_hit `needs_input`（查询全部 0 结果）；查询词/动作序列不同 | `examples/09_controlled_retrieval/` |
+| AC-01 正常生成 | offline `completed` 28s；real `completed` 30s，6 镜，4 条素材引用，规则 0 error | `examples/01_normal/output.offline.json`、`trace.offline.jsonl`、`output.real.json`、`trace.real.jsonl` |
+| AC-02 缺关键信息 | `needs_input`，缺 `audience`，无 `model_response` | `examples/02_missing_input/output.offline.json`、`trace.offline.jsonl` |
+| AC-03a 无结果 | offline：改写+回退共 5 次 0 结果 → `needs_input`；real：改写后命中通用素材 → `completed`（按 AC-03b 分支，已在 README 注明） | `examples/03_no_result/a_no_hit/output.offline.json`、`trace.offline.jsonl`；real：`a_no_hit/real/trace.real.jsonl` |
+| AC-03b 改写命中 | offline `completed` 28s，引用 P01 | `examples/03_no_result/b_rewrite_hit/output.offline.json`、`trace.offline.jsonl` |
+| AC-04a 工具可恢复失败 | offline/real `completed`，`tool_errors` 含 `injected=true` 的 timeout | `examples/04_tool_failure/a_recoverable/trace.offline.jsonl`；real：`a_recoverable/real/trace.real.jsonl` |
+| AC-04b 工具持续失败 | `failed`，`failure.code=tool_failure_unrecovered`，无编造脚本 | `examples/04_tool_failure/b_persistent/output.offline.json`、`trace.offline.jsonl` |
+| AC-05 超时长修正 | offline 核心 38→28（≥2 次估算、改稿重估、引用 P01）；real 31s（首稿即 within，压缩分支未触发，为加分证据） | `examples/05_over_duration/offline/trace.offline.jsonl`、`output.offline.json`；real：`05_over_duration/real/trace.real.jsonl` |
+| AC-06 无法满足 | `failed`，`cannot_satisfy`；证据含目标区间 [27,33] vs kuaishou 上限 25、`PLAT-kuaishou-DUR-001` | `examples/06_unsatisfiable/output.offline.json`、`trace.offline.jsonl` |
+| AC-07 步数上限 | `incomplete`，`step_limit`，保留 38s 草稿 | `examples/07_step_limit/output.offline.json`、`trace.offline.jsonl` |
+| AC-08a 只改目标时长 | offline：同 38s 初稿 → 30s 目标压缩 28 / 60s 目标扩张 58；两条 trace 动作方向相反 | `examples/08_controlled_target/target_30/trace.offline.jsonl`、`target_60/trace.offline.jsonl` |
+| AC-08b 只改检索结果 | offline/real：hit `completed`；no_hit `needs_input`（查询全部 0 结果）；查询词/动作序列不同 | `examples/09_controlled_retrieval/hit/trace.offline.jsonl`、`no_hit/trace.offline.jsonl`；real：`hit/real/trace.real.jsonl`、`no_hit/real/trace.real.jsonl` |
 
-正式真实决策证据（刺激必然发生）：`AC-03a real`、`AC-08b no_hit real`、`AC-04a real`。
+### 3.1 两条真实执行路径（必需证据，可直接在 trace 里核对）
+
+| 路径 | trace 文件 | 可看到什么 |
+| --- | --- | --- |
+| 工具失败后调整（AC-04a real） | `examples/04_tool_failure/a_recoverable/real/trace.real.jsonl` | 第 1 次 `search_materials` 返回 `ok=false / injected=true / code=timeout`；随后模型再次检索并继续 `submit_script` → `estimate_duration` / `check_rules` → `finish`。每步含工具名、参数、观察摘要、下一步动作，以及 `decision_note`（模型可见输出）或 `decision_summary`（编排层事实摘要，source=orchestrator） |
+| 检索无结果后调整（AC-08b no_hit real） | `examples/09_controlled_retrieval/no_hit/real/trace.real.jsonl` | 多次 `search_materials` 全部 0 条、查询词逐次改写，模型最终调用 `ask_user` → `needs_input`；与 `hit/real/trace.real.jsonl`（同样输入、仅数据集不同）的动作序列明显不同 |
+
+补充一条同向证据：`examples/03_no_result/a_no_hit/real/trace.real.jsonl`（模型改写查询后命中通用素材，实际走 AC-03b 分支）。
+步数/工具调用上限证据：`examples/07_step_limit/output.offline.json`（`status=incomplete`、`failure.code=step_limit`、保留 38s 草稿）；批次超预算的 `skipped_tool_calls` 行为由单元测试覆盖。
+
+以上记录只含工具动作、参数、返回摘要与可见说明，不含模型内部思维过程（`reasoning_content` 在客户端即被丢弃）。
 `AC-05 real`、`AC-08a real`（未跑）只作加分证据。
 
 ## 4. 关键数字（实际运行）
