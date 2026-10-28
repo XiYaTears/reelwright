@@ -71,7 +71,7 @@ $env:PYTHONUTF8=1
 .\.venv\Scripts\python.exe -m pytest -q -m real    # 真实模型冒烟（需 .env.local）
 ```
 
-当前结果：离线 `195 passed, 3 deselected`（约 11s）；真实冒烟 `3 passed`（约 47s），见
+当前结果：离线 `198 passed, 3 deselected`；真实冒烟 `3 passed`。结果文件见
 `examples/pytest-offline.txt`、`examples/pytest-real.txt`。
 
 ## 验收证据（examples/）

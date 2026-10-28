@@ -1,55 +1,54 @@
-# 04 AI 使用记录（初稿，仅列事实）
+# 04 AI 使用记录
 
 | 项 | 内容 |
 | --- | --- |
 | 日期 | 2026-10-28 |
-| 状态 | 开发方初稿，待需求方改写定稿 |
-| 说明 | 本文只列事实，不美化；需求方负责最终定稿 |
+| 维护 | 需求方（本文件由编码会话出初稿，需求方改写定稿） |
 
-## 1. 使用的 AI 与工具
+## 1. 用 AI 做了什么
 
-- 编码 Agent：DeepSeek Harness 中的 `deepseek-flash`（本轮会话），负责代码、测试、文档与证据生成。
-- 被开发系统调用的模型：DeepSeek `deepseek-flash`（真实模式，OpenAI 风格 tool calling）；离线模式使用固定策略
-  mock，不调用任何模型。
-- 依赖：LangGraph `1.2.18`、langchain-core `1.7.0`、httpx `0.28.1`、python-dotenv `1.2.4`、pytest `9.2.0`。
-- 未使用：外部 RAG、网络搜索、其他 LLM、托管观测（LangSmith 等）。
+这个项目是 AI 辅助开发的，分工在 `AGENTS.md` 里事先写死了：
 
-## 2. 人工（需求方）做出的决策
+- **编码会话（AI）**：接手需求后自己拆任务、读 `AGENTS.md`、写需求与设计初稿、实现 `src/` 代码与测试、跑验收场景、生成 `examples/` 证据和 01–03 文档。
+- **另一个独立评审会话（AI，无上下文）**：只读文档和代码挑问题，不知道我前面的判断，专门用来找我看漏的东西。
+- **我（需求方）**：定业务目标和技术栈、写工程契约、拍板验收口径、逐轮评审并打回、亲自复跑验证、写 04/05 和最终定稿。
 
-- 维护 `AGENTS.md` 工程契约与技术栈批准；提出业务硬约束（事实可追溯、时长、规则、状态、证据规范）。
-- 第一轮评审：通过设计，拍板 Q1 ±10% 容差、Q2 四平台与规则范围、Q3 引用口径；提出 9 项修订。
-- 盲审：提出 8 条意见（空素材夹具、mock 查询序列、预算 off-by-one、平台时长 rule_id、文档口径、证据测试、
-  runner 顺序、LangGraph 归属）；纠正 2 条误判。
-- 独立复跑 9 个离线场景并审查 HEAD 提交自洽性，发现 `ToolCall.raw_arguments` 字段未提交。
-- 独立验证 `DeepSeekClient` 真机崩溃（`NO_PROXY` 含 `[::1]`）并给出修法；复跑修复后的真机调用。
-- 需求方保留：`docs/04–05` 改写定稿、`README.md` 终审、推送远端。
+工具与版本：编码和评审都用 DeepSeek Harness（`deepseek-flash`）；被开发系统调用的是 DeepSeek `deepseek-flash`（真实模式，原生 tool calling），离线模式是固定策略 mock，不调用任何模型。运行时依赖见 `requirements.txt`（LangGraph 1.2.18、langchain-core 1.7.0、httpx 0.28.1、python-dotenv 1.2.4、pytest 9.2.0）。没有用外部 RAG、网络搜索、LangSmith 这类托管观测。
 
-## 3. AI 生成并人工验证的内容
+## 2. 协作方式
 
-- `src/` 全部代码、`data/` 合成数据、`tests/` 全部测试、`docs/01–03` 与本文初稿、`examples/` 运行证据。
-- 验证方式：`pytest -q`（195 passed）、`pytest -q -m real`（3 passed）、按 `examples/*/command.*.txt`
-  复跑、检查 trace 字段与引用可回溯性、密钥泄漏扫描（除 `.env.local` 自身外 0 命中）。
-- 真机数字：AC-01 `completed` 27s；AC-05 real 36→30；AC-08b no_hit 9 次 0 结果后 `needs_input`；
-  AC-04a 注入 timeout 后 `completed` 且 `tool_errors` 有 injected 记录。
+- 第一轮只让 AI 写 `docs/01-requirements.md` 和 `docs/02-solution.md`，不写代码，写完停下等我审。我审出 9 处问题，最典型的一条是 AC-05 真实模式要求"最终 ≤30 秒"，但运行时容差是 ±10%（27–33），合法结果会被误判；改完才放行实现。
+- 实现按 9 个模块拆，每个模块测试绿了再提交。中途我自己用 CLI 跑了 9 个离线场景，又拿真实模型复跑证据。
+- 我起了一个独立评审会话做交叉审查，它给 8 条意见，我核对后采纳 6 条、驳回 2 条误判（例如它说数据加载器写死了 P01 约束，我翻 `src/dataset.py` 发现没有）。
+- 04 和 05 先让 AI 按事实列初稿，再自己重写：AI 初稿里"总结陈词"式的句子基本都删了，数字和文件路径逐条对过。
 
-## 4. AI 出错与被纠正的事实（全部已修复/记录）
+## 3. AI 生成、我验证的内容
 
-| 问题 | 发现者 | 处理 |
+AI 产出：`src/` 全部代码、`tests/` 全部测试、`data/` 合成数据、`docs/01–03`、`examples/` 里的输入/输出/trace。`examples/` 的 trace 全部由 CLI 实际运行生成，不是手写。
+
+我自己重跑过的验证（不是看 AI 报告）：
+
+- `pytest -q` → 198 passed, 3 deselected；`pytest -q -m real` → 3 passed。
+- 临时 worktree 干净 checkout 到 HEAD 再跑全量测试，确认提交能独立跑绿（之前确实有一个提交不自洽）。
+- 写脚本核对 `examples/` 19 对 output/trace：run_id、mode、status、首尾事件全部一致。
+- 按 `examples/*/command.*.txt` 复跑场景；真实模型单独复跑 AC-01、AC-04a（注入超时）、AC-08b no_hit，状态与证据一致。
+- 密钥扫描：除 `.env.local` 自身外 0 命中；`.env.example` 只有占位符。
+
+## 4. AI 出错、被发现和修复的
+
+| 问题 | 发现方式 | 处理 |
 | --- | --- | --- |
-| 真机 httpx `trust_env=True` 被 `NO_PROXY=[::1]` 触发崩溃 | 需求方 | `trust_env=False` + `LLM_PROXY`，补回归测试 |
-| 真实 API HTTP 422：tools 缺 `type/function` 包装 | AI 真机首跑 | 请求体规范化包装，补测试 |
-| `ToolCall.raw_arguments` 使用处已提交、字段未提交，HEAD 不自洽 | 需求方 | 补 `fix` 提交，复验工作区 |
-| 控制动作参数非法时仍提前收尾（与 02 §6.5 矛盾） | 需求方盲审 + 测试 | 修复为回循环重试，补测试 |
-| `check_rules` 业务违规被误记为工具失败 | AI 证据复核 | 区分工具失败/业务未通过，补测试 |
-| AC-03a ask_user `missing_fields` 用 `topic` 语义别扭 | 需求方 | 改为 `materials` + reason"素材库未覆盖该主题" |
-| 异常分支 `run_end.steps_used=0` 不真实 | 需求方 | 从已落盘 trace 取实际步数/工具调用数 |
-| 第一轮文档误写 `NO_PROXY`/合同措辞/证据默认 skip 等 | 需求方评审 | 已按评审意见修订文档 |
+| AC-05 真实模式判定与运行时 ±10% 容差自相矛盾 | 我评审 01/02 | 运行时只认区间；38→28 降为离线参考证据 |
+| `httpx` 默认读环境变量，本机 `NO_PROXY` 含 `[::1]` 导致构造即崩 | 我用真实 key 冒烟 | `trust_env=False` + 显式 `LLM_PROXY`，补回归测试 |
+| 真实请求 `tools` 没按 OpenAI 格式包 `{"type":"function",...}`，真机 422 | AI 真实首跑 | 请求体规范化，补测试 |
+| `ToolCall.raw_arguments` 使用处提交了、字段没提交，HEAD 跑不起来 | 我干净 checkout 审查 | 补提交，之后每次提交前跑干净环境 |
+| `finish`/`ask_user` 参数写坏时直接判失败，不把错误喂回模型 | 我评审 + 独立审查 | 回填错误、回循环重试，补测试 |
+| 19 个复跑命令文件里 18 个多写了一个 `run`，照 README 会执行失败 | 我逐条试跑命令文件 | 重新生成命令，加命令文件解析测试 |
+| 05 初稿把 13 组离线证据写成 11 组 | 我核对文件 | 已更正 |
 
-## 5. AI 不能声称/不能替代的部分
+## 5. 边界
 
-- mock 结果不是模型能力证据；离线证据只证明流程与硬约束。
-- 真实模型的决策质量不由本项目的自动测试证明；`examples` 真实 trace 为实际运行，数值与分支差异如实记录。
-- 事实的语义级正确性（有引用但张冠李戴）无法由现有自动检查保证，依赖人工评审。
-- 平台/品牌规则为合成数据，不能作为真实合规依据。
-- `decision_summary` 是编排层按实际观察+实际调用拼出的摘要（source=orchestrator），不是模型输出；
-  模型可见的 `decision_note` 可能缺失（`source=missing`），两者在 03 与 examples README 中分开说明。
+- mock 只证明流程和硬约束，不证明模型决策质量；离线证据里的 38→28 是固定策略跑出来的，不能当成真实模型能力。
+- 真实模型每次输出不同，证据里的数字是某一次实际运行的快照，不是稳定值。
+- 事实检查覆盖"引用存在 + 原文逐字 + 数字/资质类表述需引用支撑"；语义级张冠李戴（引用真但结论错）靠人工评审。
+- `decision_summary` 是编排层按"上一步实际观察 + 本步实际调用"拼出的事实摘要，不是模型输出；模型可见的 `decision_note` 可能缺失，trace 里两列都标了来源。
