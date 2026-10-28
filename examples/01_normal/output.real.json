@@ -1,0 +1,278 @@
+{
+  "run_id": "20261028T224634+0800-7f7697",
+  "mode": "real",
+  "status": "completed",
+  "input": {
+    "topic": "字幕功能上线",
+    "audience": "剪辑新手",
+    "platform": "douyin",
+    "target_duration_s": 30,
+    "style": "轻快教程",
+    "extra_notes": null
+  },
+  "script": {
+    "title": "字幕功能上线｜剪辑新手30秒轻快教程",
+    "platform": "douyin",
+    "style": "轻快教程",
+    "target_duration_s": 30,
+    "window": {
+      "min_s": 27,
+      "max_s": 33
+    },
+    "shots": [
+      {
+        "index": 1,
+        "visual": "竖屏手机特写，剪辑界面缓缓推近，「字幕」两个字弹出",
+        "narration": "剪辑新手注意，字幕功能上线了。",
+        "caption": "字幕功能上线",
+        "duration_s": 4,
+        "duration_breakdown": {
+          "narration_chars": 15,
+          "caption_chars": 6,
+          "narration_s": 4,
+          "caption_s": 2
+        },
+        "citations": [
+          {
+            "material_id": "P01",
+            "fact_id": "P01-F1",
+            "quote": "支持字幕"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "visual": "时间轴放大，字幕条依次排列在画面中",
+        "narration": "现在做视频，可以直接支持字幕。",
+        "caption": "支持字幕",
+        "duration_s": 4,
+        "duration_breakdown": {
+          "narration_chars": 15,
+          "caption_chars": 4,
+          "narration_s": 4,
+          "caption_s": 1
+        },
+        "citations": [
+          {
+            "material_id": "P01",
+            "fact_id": "P01-F1",
+            "quote": "支持字幕"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "visual": "滑动手势划动模板列表，缩略图快速切换",
+        "narration": "节奏不会排？内置剪辑模板库，套一个再改。",
+        "caption": "内置剪辑模板库",
+        "duration_s": 5,
+        "duration_breakdown": {
+          "narration_chars": 20,
+          "caption_chars": 7,
+          "narration_s": 5,
+          "caption_s": 2
+        },
+        "citations": [
+          {
+            "material_id": "P06",
+            "fact_id": "P06-F1",
+            "quote": "内置剪辑模板库"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "visual": "音乐面板展开，列表上下滚动，播放键被点亮",
+        "narration": "配乐也别另找了，内置背景音乐库。",
+        "caption": "内置背景音乐库",
+        "duration_s": 4,
+        "duration_breakdown": {
+          "narration_chars": 16,
+          "caption_chars": 7,
+          "narration_s": 4,
+          "caption_s": 2
+        },
+        "citations": [
+          {
+            "material_id": "P02",
+            "fact_id": "P02-F1",
+            "quote": "内置背景音乐库"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "visual": "成片预览竖屏播放，画面下方出现字幕",
+        "narration": "字幕、模板、配乐，三样凑齐，新手也能出片。",
+        "caption": "字幕+模板+配乐",
+        "duration_s": 6,
+        "duration_breakdown": {
+          "narration_chars": 21,
+          "caption_chars": 8,
+          "narration_s": 6,
+          "caption_s": 2
+        },
+        "citations": [
+          {
+            "material_id": "P01",
+            "fact_id": "P01-F1",
+            "quote": "支持字幕"
+          },
+          {
+            "material_id": "P06",
+            "fact_id": "P06-F1",
+            "quote": "内置剪辑模板库"
+          },
+          {
+            "material_id": "P02",
+            "fact_id": "P02-F1",
+            "quote": "内置背景音乐库"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "visual": "手指点向屏幕下方，收藏图标跳动",
+        "narration": "先收藏这条，下次剪辑照着切。",
+        "caption": "收藏起来慢慢看",
+        "duration_s": 4,
+        "duration_breakdown": {
+          "narration_chars": 14,
+          "caption_chars": 7,
+          "narration_s": 4,
+          "caption_s": 2
+        },
+        "citations": []
+      }
+    ],
+    "estimated_total_duration_s": 27,
+    "citations": [
+      {
+        "material_id": "P01",
+        "fact_id": "P01-F1",
+        "quote": "支持字幕",
+        "shot_indexes": [
+          1,
+          2,
+          5
+        ]
+      },
+      {
+        "material_id": "P06",
+        "fact_id": "P06-F1",
+        "quote": "内置剪辑模板库",
+        "shot_indexes": [
+          3,
+          5
+        ]
+      },
+      {
+        "material_id": "P02",
+        "fact_id": "P02-F1",
+        "quote": "内置背景音乐库",
+        "shot_indexes": [
+          4,
+          5
+        ]
+      }
+    ],
+    "risks": []
+  },
+  "checks": {
+    "estimate": {
+      "ok": true,
+      "per_shot": [
+        {
+          "index": 1,
+          "narration_chars": 15,
+          "caption_chars": 6,
+          "narration_s": 4,
+          "caption_s": 2,
+          "duration_s": 4
+        },
+        {
+          "index": 2,
+          "narration_chars": 15,
+          "caption_chars": 4,
+          "narration_s": 4,
+          "caption_s": 1,
+          "duration_s": 4
+        },
+        {
+          "index": 3,
+          "narration_chars": 20,
+          "caption_chars": 7,
+          "narration_s": 5,
+          "caption_s": 2,
+          "duration_s": 5
+        },
+        {
+          "index": 4,
+          "narration_chars": 16,
+          "caption_chars": 7,
+          "narration_s": 4,
+          "caption_s": 2,
+          "duration_s": 4
+        },
+        {
+          "index": 5,
+          "narration_chars": 21,
+          "caption_chars": 8,
+          "narration_s": 6,
+          "caption_s": 2,
+          "duration_s": 6
+        },
+        {
+          "index": 6,
+          "narration_chars": 14,
+          "caption_chars": 7,
+          "narration_s": 4,
+          "caption_s": 2,
+          "duration_s": 4
+        }
+      ],
+      "total_duration_s": 27,
+      "target_duration_s": 30,
+      "window": {
+        "min_s": 27,
+        "max_s": 33
+      },
+      "within": true,
+      "verdict": "within",
+      "over_by_s": 0,
+      "under_by_s": 0,
+      "formula_version": "duration-v1"
+    },
+    "rules": {
+      "ok": true,
+      "platform": "douyin",
+      "violations": [],
+      "stats": {
+        "shots_checked": 6,
+        "rules_checked": 24,
+        "errors": 0,
+        "warnings": 0,
+        "truncated": false
+      }
+    },
+    "engine": "finalize",
+    "mismatch": {
+      "estimate": false,
+      "rules": false
+    }
+  },
+  "needs_input": null,
+  "failure": null,
+  "tool_errors": [],
+  "skipped_tool_calls": [],
+  "risks": [],
+  "budget": {
+    "max_steps": 8,
+    "steps_used": 4,
+    "max_tool_calls": 16,
+    "tool_calls_used": 8
+  },
+  "data_digest": "98ec7deceba7",
+  "trace_path": "examples\\01_normal\\trace.real.jsonl",
+  "generated_at": "2026-10-28T22:46:34+08:00"
+}

@@ -1,0 +1,1 @@
+$env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m src.cli run --input examples/01_normal/input.json --out examples/01_normal/output.real.json --trace examples/01_normal/trace.real.jsonl

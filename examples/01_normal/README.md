@@ -11,3 +11,10 @@
 
 > 证据来源：本目录 `output.offline.json` 与 `trace.offline.jsonl` 由上方命令实际运行生成，未手写/补写；`mode=offline` 只证明流程与硬约束，不证明真实模型决策质量。
 > 复跑退出码：completed
+
+## 真实模型证据（加分证据，同一输入）
+
+- 命令：`command.real.txt`；`mode=real`（真实 DeepSeek 调用）
+- 结果：`status=completed`，退出码 0；总时长 27s（区间 {'min_s': 27, 'max_s': 33}）
+- 分镜 6；引用 ['P01', 'P06', 'P02']；规则 `ok=True`；`tool_errors=0`
+- trace 的 `decision_note_source`：['model']
